@@ -3,8 +3,11 @@ project(dk-perception)
 
 # Set the C++ standard to C++17
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
+set(CMAKE_CXX_FLAGS
+    "${CMAKE_CXX_FLAGS} \
 -isystem /usr/include/c++/11 \
 -isystem /usr/include/x86_64-linux-gnu/c++/11 \
 -isystem /usr/include/x86_64-linux-gnu/c++/11/bits \
@@ -19,18 +22,17 @@ include(CMakePackageConfigHelpers)
 configure_package_config_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
   ${CMAKE_CURRENT_BINARY_DIR}/dk_perception-config.cmake
-  INSTALL_DESTINATION lib/cmake/dk_perception
-)
+  INSTALL_DESTINATION lib/cmake/dk_perception)
 
-install(FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/dk_perception-config.cmake
-  DESTINATION lib/cmake/dk_perception
-)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dk_perception-config.cmake
+        DESTINATION lib/cmake/dk_perception)
 
 add_subdirectory(modules/type)
 add_subdirectory(modules/detection)
 add_subdirectory(modules/image_processing)
 add_subdirectory(modules/pointcloud_processing)
+add_subdirectory(modules/dnn)
+
 option(BUILD_EXAMPLES "Build examples" ON)
 
 if(BUILD_EXAMPLES)
