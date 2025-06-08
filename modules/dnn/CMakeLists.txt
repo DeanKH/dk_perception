@@ -1,6 +1,6 @@
 find_package(onnxruntime REQUIRED)
 
-add_library(dnn STATIC src/superpoint.cpp)
+add_library(dnn SHARED src/superpoint.cpp)
 target_include_directories(
   dnn PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
              $<INSTALL_INTERFACE:include> ${Eigen3_INCLUDE_DIRS})
@@ -12,6 +12,10 @@ target_link_libraries(dnn PUBLIC ${OpenCV_LIBS} onnxruntime::onnxruntime)
 # onnxruntime::onnxruntime)
 
 add_library(dk_perception::dnn ALIAS dnn)
+
+# install weights directory
+install(DIRECTORY weights/ DESTINATION share/dk_perception/weights)
+
 install(
   TARGETS dnn
   EXPORT dk_perception-targets

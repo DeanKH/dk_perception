@@ -1,54 +1,48 @@
 #pragma once
+#include <onnxruntime/onnxruntime_cxx_api.h>
+#include <onnxruntime_c_api.h>
+
 #include <cmath>
 #include <cstdint>
+// #include <dk_perception/common/macros.hpp>
 #include <eigen3/Eigen/Core>
 #include <exception>
 #include <filesystem>
 #include <numeric>
-#include <onnxruntime/onnxruntime_cxx_api.h>
-
-#include <onnxruntime_c_api.h>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include <thread>
 
-namespace dklib::experimental
-{
-class SuperPoint
-{
-public:
+namespace dklib::experimental {
+class SuperPoint {
+ public:
   /** InputSize for SuperPoint input */
-  enum class InputSize : uint32_t
-  {
+  enum class InputSize : uint32_t {
     kInputSize512 = 512,
     kInputSize1024 = 1024,
     kInputSize2048 = 2048,
   };
 
-  enum class InferenceDevice : uint32_t
-  {
+  enum class InferenceDevice : uint32_t {
     kCPU = 0,
     kCUDA,
     kNum,
   };
 
-  struct Result
-  {
+  struct Result {
     std::vector<cv::Point2f> keypoints;  // Detected keypoints
     std::vector<float> scores;           // Scores for each keypoint
     cv::Mat descriptors;                 // Descriptors for each keypoint
   };
-  SuperPoint(const std::filesystem::path& model_path,
-             InferenceDevice inference_device = InferenceDevice::kCPU,
+  SuperPoint(const std::filesystem::path& model_path, InferenceDevice inference_device = InferenceDevice::kCPU,
              InputSize input_size = InputSize::kInputSize512);
 
   ~SuperPoint() = default;
 
   void setInputSize(InputSize input_size) { input_size_ = input_size; }
 
-  Result extract(const cv::Mat& image)
-  {
+  Result extract(const cv::Mat& image) {
     double scale = 1.0;
     cv::Mat preprocessed = preprocessImage(
         image, [](size_t a, size_t b) { return std::max(a, b); }, scale, cv::INTER_AREA);
@@ -57,12 +51,12 @@ public:
     return postprocess(output_tensor, scale);
   }
 
-private:
+  // DKLIB_CLASS_PTRS(SuperPoint);
+
+ private:
   void configureNodes();
 
-  cv::Mat preprocessImage(const cv::Mat& image,
-                          std::function<size_t(size_t, size_t)> fn,
-                          double& scale,
+  cv::Mat preprocessImage(const cv::Mat& image, std::function<size_t(size_t, size_t)> fn, double& scale,
                           int interp_method = cv::INTER_AREA) const;
 
   std::vector<Ort::Value> inference(const cv::Mat& preprocessed_image);

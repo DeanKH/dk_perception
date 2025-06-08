@@ -55,16 +55,10 @@ RUN \
   --mount=type=cache,target=/var/lib/apt \
   apt update \
   && apt install -y --no-install-recommends \
-  ros-humble-desktop
-
-RUN \
-  --mount=type=cache,target=/var/cache/apt \
-  --mount=type=cache,target=/var/lib/apt \
-  apt-get update && \
-  apt-get install -y --no-install-recommends \
-  gdb \
-  ros-dev-tools
-
+  ros-humble-desktop \
+  ros-humble-rmw-cyclonedds-cpp \
+  ros-dev-tools \
+  gdb
 
 RUN \
   --mount=type=bind,source=assets/onnxruntime-linux-x64-gpu-1.22.0.tgz,target=/tmp/onnxruntime.tgz \
