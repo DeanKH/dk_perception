@@ -81,18 +81,15 @@ Eigen::MatrixXf computeSimilarityMatrix(const cv::Mat& cv_descriptors, const cv:
 
   // 3. ノルムの外積 → MxN の正規化係数行列
   Eigen::MatrixXf norm_matrix = vocab_norms * desc_norms.transpose();  // MxN
-  std::cout << "Norm matrix shape: " << norm_matrix.rows() << "x" << norm_matrix.cols() << std::endl;
 
   // 4. 内積計算 vocab * descriptors.T → MxN
   Eigen::MatrixXf dot_product = vocab * descriptors.transpose();  // MxN
-  std::cout << "Dot product shape: " << dot_product.rows() << "x" << dot_product.cols() << std::endl;
 
   // 5. コサイン類似度 = 内積 / ノルム
   Eigen::MatrixXf similarity_matrix = dot_product.array() / norm_matrix.array();  // MxN
 
   // 6. 転置（元コードと合わせる）
   similarity_matrix.transposeInPlace();  // NxM
-  std::cout << "Similarity matrix shape: " << similarity_matrix.rows() << "x" << similarity_matrix.cols() << std::endl;
   return similarity_matrix;
 }
 }  // namespace
