@@ -34,3 +34,7 @@ install(
   FILE dk_perception-targets.cmake
   NAMESPACE dk_perception::
   DESTINATION lib/cmake/dk_perception)
+
+if(BUILD_TESTING)
+  add_subdirectory(test)
+endif()
