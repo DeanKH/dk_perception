@@ -15,3 +15,6 @@ target_link_libraries(pointcloud_processing_example
 add_executable(superpoint_onnx_demo demo.cpp)
 target_link_libraries(superpoint_onnx_demo PRIVATE ${OpenCV_LIBS}
                                                    dk_perception::dnn)
+
+add_executable(deeplsd_example deeplsd_example.cpp)
+target_link_libraries(deeplsd_example PRIVATE ${OpenCV_LIBS} dk_perception::dnn)

@@ -1,15 +1,12 @@
 find_package(onnxruntime REQUIRED)
 
-add_library(dnn SHARED src/superpoint.cpp)
+file(GLOB_RECURSE DNN_SOURCES src/*.cpp)
+add_library(dnn SHARED ${DNN_SOURCES})
 target_include_directories(
   dnn PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
              $<INSTALL_INTERFACE:include> ${Eigen3_INCLUDE_DIRS})
 
 target_link_libraries(dnn PUBLIC ${OpenCV_LIBS} onnxruntime::onnxruntime)
-
-# add_executable(superpoint_onnx_demo src/demo.cpp) target_link_libraries(
-# superpoint_onnx_demo PRIVATE superpoint_onnx ${OpenCV_LIBS}
-# onnxruntime::onnxruntime)
 
 add_library(dk_perception::dnn ALIAS dnn)
 
