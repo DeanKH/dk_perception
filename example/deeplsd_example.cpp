@@ -19,28 +19,18 @@ int main(int argc, char* argv[]) {
     std::cerr << "Error: Image must have 3 channels (BGR format)." << std::endl;
     return -1;
   }
+  dklib::dnn::DeepFastLineSegmentDetector detector(model_path, dklib::dnn::InferenceDevice::kCUDA,
+                                                   dklib::dnn::DeepLsdAttractionField::InputSize::kInputSize1280);
 
-  dklib::dnn::DeepLsdAttractionField deep_lsd(model_path, dklib::dnn::InferenceDevice::kCUDA,
-                                              dklib::dnn::DeepLsdAttractionField::InputSize::kInputSize1280);
-  auto result = deep_lsd.inference(image);
+  std::vector<cv::Vec4f> lines;
+  detector.detect(image, lines);
 
-  std::cout << "df_norm shape: " << result.df_norm.size() << std::endl;
-  std::cout << "df shape: " << result.df.size() << std::endl;
-  std::cout << "line_level shape: " << result.line_level.size() << std::endl;
-
-  // normalize df_norm to [0, 1] range for visualization and convert to CV_8U
-  cv::Mat df_norm_vis;
-  cv::normalize(result.df_norm, df_norm_vis, 0, 255, cv::NORM_MINMAX, CV_8U);
-  cv::imshow("df_norm", df_norm_vis);
-
-  cv::Mat df_vis;
-  cv::normalize(result.df, df_vis, 0, 255, cv::NORM_MINMAX, CV_8U);
-  cv::imshow("df", df_vis);
-
-  cv::Mat line_level_vis;
-  cv::normalize(result.line_level, line_level_vis, 0, 255, cv::NORM_MINMAX, CV_8U);
-  cv::imshow("line_level", line_level_vis);
-
+  for (const auto& line : lines) {
+    cv::Point p1(line[0], line[1]);
+    cv::Point p2(line[2], line[3]);
+    cv::line(image, p1, p2, cv::Scalar(0, 255, 0), 1);  // Draw lines in green color
+  }
+  cv::imshow("Detected Lines", image);
   cv::waitKey(0);
   return 0;
 }

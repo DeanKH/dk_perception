@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <opencv2/opencv.hpp>
+#include <opencv2/ximgproc/fast_line_detector.hpp>
 
 #include "dk_perception/dnn/common.hpp"
 
@@ -55,5 +56,40 @@ class DeepLsdAttractionField {
   std::vector<std::vector<int64_t>> input_node_shapes_;
   std::vector<char*> output_node_names_;
   std::vector<std::vector<int64_t>> output_node_shapes_;
+};
+
+/**
+ * @brief DeepLSD + Fast Line Detector
+ */
+class DeepFastLineSegmentDetector {
+ public:
+  DeepFastLineSegmentDetector(
+      const std::filesystem::path& model_path, InferenceDevice inference_device = InferenceDevice::kCUDA,
+      DeepLsdAttractionField::InputSize input_size = DeepLsdAttractionField::InputSize::kInputSize1280) {
+    // Initialize DeepLsdAttractionField
+    deep_lsd_ = std::make_unique<DeepLsdAttractionField>(model_path, inference_device, input_size);
+
+    int length_threshold = 40;
+    float distance_threshold = 1.414213562f * 4;
+    // disable Canny edge detection
+    int canny_aperture_size = 3;
+    double canny_th1 = 100.0;
+    double canny_th2 = 100.0;
+    bool do_merge = true;
+    line_detector_ = cv::ximgproc::createFastLineDetector(length_threshold, distance_threshold, canny_th1, canny_th2,
+                                                          canny_aperture_size, do_merge);
+  }
+
+  void detect(const cv::Mat& image, std::vector<cv::Vec4f>& lines) {
+    auto result = deep_lsd_->inference(image);
+    cv::Mat df_norm;
+    cv::normalize(result.df_norm, df_norm, 0, 255, cv::NORM_MINMAX, CV_8U);
+
+    line_detector_->detect(df_norm, lines);
+  }
+
+ private:
+  std::unique_ptr<DeepLsdAttractionField> deep_lsd_;
+  cv::Ptr<cv::ximgproc::FastLineDetector> line_detector_;
 };
 }  // namespace dklib::dnn
