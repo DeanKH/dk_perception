@@ -58,7 +58,8 @@ RUN \
   ros-humble-desktop \
   ros-humble-rmw-cyclonedds-cpp \
   ros-dev-tools \
-  gdb
+  gdb \
+  clangd
 
 RUN \
   --mount=type=bind,source=assets/onnxruntime-linux-x64-gpu-1.22.0.tgz,target=/tmp/onnxruntime.tgz \
