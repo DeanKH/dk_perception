@@ -18,3 +18,10 @@ target_link_libraries(superpoint_onnx_demo PRIVATE ${OpenCV_LIBS}
 
 add_executable(deeplsd_example deeplsd_example.cpp)
 target_link_libraries(deeplsd_example PRIVATE ${OpenCV_LIBS} dk_perception::dnn)
+add_executable(radial_extremum_detect_example
+               radial_extremum_detect_example.cpp)
+target_include_directories(
+  radial_extremum_detect_example PUBLIC include ${EIGEN3_INCLUDE_DIRS}
+                                        ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(radial_extremum_detect_example dk_perception::detection
+                      dk_perception::type)
