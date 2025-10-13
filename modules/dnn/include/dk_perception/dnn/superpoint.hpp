@@ -35,6 +35,7 @@ class SuperPoint {
     std::vector<float> scores;           // Scores for each keypoint
     cv::Mat descriptors;                 // Descriptors for each keypoint
   };
+
   SuperPoint(const std::filesystem::path& model_path, InferenceDevice inference_device = InferenceDevice::kCPU,
              InputSize input_size = InputSize::kInputSize512);
 

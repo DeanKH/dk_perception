@@ -1,97 +1,88 @@
 #pragma once
 #include <pcl/PointIndices.h>
+#include <pcl/common/transforms.h>
+#include <pcl/filters/passthrough.h>
 #include <pcl/point_cloud.h>
 
+#include <dk_perception/pcproc/project_xz_plane.hpp>
+#include <dk_perception/pcproc/radial_splitter.hpp>
 #include <dk_perception/type/pointcloud/iteratable_colorized_pointcloud_accessor.hpp>
 
 namespace dklib::perception::detection::d3 {
 
+/**
+ * @brief 点群から最小値を計算する最も単純な方法.
+ *
+ * @tparam PointT
+ * @param pc
+ * @param transform_matrix
+ * @return PointT
+ */
+template <typename PointT>
+PointT calcMinimumPoint(const typename pcl::PointCloud<PointT>::Ptr& pc, const Eigen::Affine3f& transform_matrix) {
+  typename pcl::PointCloud<PointT>::Ptr projected(new pcl::PointCloud<PointT>());
+  dklib::perception::pcproc::projectXZPlane<PointT>(pc, transform_matrix, projected);
+  // calc min z point
+  PointT min_z_it = *std::min_element(projected->points.begin(), projected->points.end(),
+                                      [](const auto& a, const auto& b) { return a.z < b.z; });
+
+  Eigen::Affine3f inverse_transform = transform_matrix.inverse();
+  min_z_it = pcl::transformPoint(min_z_it, inverse_transform);
+
+  return min_z_it;
+}
+
 template <typename PointT>
 class RadialExtremumDetector {
  public:
-  RadialExtremumDetector() {}
+  RadialExtremumDetector(const pcproc::RadialSplitter<PointT>& splitter) : splitter_{splitter} {}
 
-  void setInputCloud(const typename pcl::PointCloud<PointT>::Ptr& cloud) { input_cloud_ = cloud; }
-  void setCenter(const Eigen::Vector3f& center) { center_ = center; }
-  void setAxis(const Eigen::Vector3f& axis) { axis_ = axis.normalized(); }
-  void setMinDistance(float minDistance) { min_distance_ = minDistance; }
-  void setAngleStep(float angleStep) { angle_step_ = angleStep; }
-  void setWidth(float width) { width_ = width; }
+  typename pcl::PointCloud<PointT>::Ptr execute() {
+    std::vector<float> angles;
+    std::vector<typename pcl::PointCloud<PointT>::Ptr> points_list;
+    splitter_.detect(angles, points_list);
 
-  void detect(std::vector<float>& angles, std::vector<pcl::PointIndices>& point_indices) {
-    angles.clear();
-    point_indices.clear();
+    assert(angles.size() == points_list.size());
 
-    if (!input_cloud_ || input_cloud_->empty()) {
-      std::cerr << "Input cloud is not set or empty." << std::endl;
-      return;
+    typename pcl::PointCloud<PointT>::Ptr min_points(new pcl::PointCloud<PointT>());
+    min_points->reserve(angles.size());
+    for (size_t i = 0; i < angles.size(); ++i) {
+      const auto& subset = points_list[i];
+      const Eigen::AngleAxisf rotation(M_PI * -angles[i] / 180.0f, splitter_.getAxis());
+      const Eigen::Affine3f transform_matrix = rotation * Eigen::Translation3f(splitter_.getCenter());
+
+      // TODO(deankh): Implement robust extremum point search
+      PointT min_z_it = calcMinimumPoint<PointT>(subset, transform_matrix);
+      min_points->points.push_back(min_z_it);
     }
 
-    // Precompute angles and point indices
-    angles.clear();
-    point_indices.clear();
-    int num_steps = static_cast<int>(360.0f / angle_step_);
-    std::cout << "Number of steps: " << num_steps << std::endl;
-    angles.reserve(num_steps);
-    point_indices.resize(num_steps);
+    // 隣接するmin_points間の距離の分散が3σを超える点を除去
+    {
+      std::vector<float> distances;
+      for (size_t i = 0; i < min_points->size(); ++i) {
+        const auto& p1 = min_points->points[i];
+        const auto& p2 = min_points->points[(i + 1) % min_points->size()];
+        float distance = std::sqrt(std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2) + std::pow(p1.z - p2.z, 2));
+        distances.push_back(distance);
+      }
 
-    Eigen::Vector3f ref_dir = axis_.unitOrthogonal();  // Reference direction on the plane orthogonal to axis_
+      float mean = std::accumulate(distances.begin(), distances.end(), 0.0f) / distances.size();
+      float sq_sum = std::inner_product(distances.begin(), distances.end(), distances.begin(), 0.0f);
+      float stdev = std::sqrt(sq_sum / distances.size() - mean * mean);
 
-    for (int i = 0; i < num_steps; ++i) {
-      float angle = i * angle_step_;
-      std::cout << "step " << i << ": angle = " << angle << std::endl;
-      angles.push_back(angle);
-      continue;
-
-      // Compute the direction vector for this angle
-      Eigen::AngleAxisf rotation(M_PI * angle / 180.0f, axis_);
-      Eigen::Vector3f dir = rotation * ref_dir;
-
-      // Define a plane perpendicular to the direction vector at the center
-      Eigen::Vector3f plane_normal = dir;
-      Eigen::Vector3f plane_point = center_;
-
-      // Collect points within the width around the ray defined by center_ and dir
-      pcl::PointIndices indices;
-      for (size_t idx = 0; idx < input_cloud_->size(); ++idx) {
-        const PointT& pt = input_cloud_->at(idx);
-        Eigen::Vector3f point(pt.x, pt.y, pt.z);
-        Eigen::Vector3f vec_to_point = point - center_;
-
-        // Project vec_to_point onto the plane normal
-        float distance_to_plane = vec_to_point.dot(plane_normal);
-        Eigen::Vector3f projected_point = point - distance_to_plane * plane_normal;
-
-        // Check if the projected point is within the width
-        if (std::abs(distance_to_plane) <= width_ / 2.0f) {
-          float distance_from_center = (projected_point - center_).norm();
-          if (distance_from_center >= min_distance_) {
-            indices.indices.push_back(static_cast<int>(idx));
-          }
+      typename pcl::PointCloud<PointT>::Ptr filtered_min_points(new pcl::PointCloud<PointT>());
+      for (size_t i = 0; i < min_points->size(); ++i) {
+        if (std::abs(distances[i] - mean) <= stdev) {
+          filtered_min_points->points.push_back(min_points->points[i]);
         }
       }
-      point_indices[i] = indices;
+      min_points = filtered_min_points;
     }
-
-    // Find extremum points in each sector
-    for (size_t i = 0; i < angles.size(); ++i) {
-      const pcl::PointIndices& indices = point_indices[i];
-      if (indices.indices.empty()) {
-        continue;
-      }
-    }
+    return min_points;
   }
 
  private:
-  typename pcl::PointCloud<PointT>::Ptr input_cloud_;
-  Eigen::Vector3f center_ = Eigen::Vector3f::Zero();
-  Eigen::Vector3f axis_ = Eigen::Vector3f::UnitZ();
-  float min_distance_ = 0.01f;
-  float angle_step_ = 1.0f;  // deg
-  float width_ = 0.05f;
-
-  // std::vector<float> angles_;
-  // std::vector<pcl::PointIndices> point_indices_;
+  const pcproc::RadialSplitter<PointT>& splitter_;
 };
 
 }  // namespace dklib::perception::detection::d3

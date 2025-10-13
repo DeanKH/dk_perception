@@ -5,6 +5,7 @@ target_include_directories(
                    $<INSTALL_INTERFACE:include>)
 
 add_library(dk_perception::common ALIAS common)
+
 install(
   TARGETS common
   EXPORT dk_perception-targets

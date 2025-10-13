@@ -6,6 +6,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/ximgproc/fast_line_detector.hpp>
 
+// #include "dk_perception/common/macros.hpp"
 #include "dk_perception/dnn/common.hpp"
 
 namespace dklib::dnn {
@@ -70,7 +71,7 @@ class DeepFastLineSegmentDetector {
     deep_lsd_ = std::make_unique<DeepLsdAttractionField>(model_path, inference_device, input_size);
 
     int length_threshold = 40;
-    float distance_threshold = 1.414213562f * 4;
+    float distance_threshold = 1.414213562f * 8;
     // disable Canny edge detection
     int canny_aperture_size = 3;
     double canny_th1 = 100.0;
@@ -85,11 +86,17 @@ class DeepFastLineSegmentDetector {
     cv::Mat df_norm;
     cv::normalize(result.df_norm, df_norm, 0, 255, cv::NORM_MINMAX, CV_8U);
 
+    // TODO: disable canny by parameter
     line_detector_->detect(df_norm, lines);
+
+    // TODO: refine by AF
   }
 
  private:
   std::unique_ptr<DeepLsdAttractionField> deep_lsd_;
   cv::Ptr<cv::ximgproc::FastLineDetector> line_detector_;
+
+ public:
+  using Ptr = std::shared_ptr<DeepFastLineSegmentDetector>;
 };
 }  // namespace dklib::dnn
