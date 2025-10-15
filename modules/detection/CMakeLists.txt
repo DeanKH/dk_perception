@@ -11,8 +11,13 @@ target_include_directories(
 
 target_link_libraries(
   detection
-  PUBLIC ${OpenCV_LIBRARIES} ${PCL_LIBRARIES} dk_perception::type
-         dk_perception::dnn dk_perception::pcproc dk_perception::optimization)
+  PUBLIC ${OpenCV_LIBRARIES}
+         ${PCL_LIBRARIES}
+         dk_perception::type
+         dk_perception::geometry
+         dk_perception::dnn
+         dk_perception::pcproc
+         dk_perception::optimization)
 
 add_library(dk_perception::detection ALIAS detection)
 install(

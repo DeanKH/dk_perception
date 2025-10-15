@@ -10,6 +10,7 @@
 #include <pcl/segmentation/sac_segmentation.h>
 
 #include <Eigen/Geometry>
+#include <dk_perception/geometry/bounding_box_3d.hpp>
 #include <dk_perception/optimization/rectangle_2d_fitting.hpp>
 #include <dk_perception/pcproc/project_xz_plane.hpp>
 #include <dk_perception/pcproc/radial_splitter.hpp>
@@ -68,23 +69,12 @@ PointT calcMinimumPoint(const typename pcl::PointCloud<PointT>::Ptr& pc, const E
   return min_z_it;
 }
 
-struct BoundingBox3D {
-  Eigen::Vector3f center;
-  Eigen::Vector3f size;
-  Eigen::Quaternionf orientation;  // rotation matrix
-
-  BoundingBox3D()
-      : center(Eigen::Vector3f::Zero()), size(Eigen::Vector3f::Zero()), orientation(Eigen::Quaternionf::Identity()) {}
-  BoundingBox3D(const Eigen::Vector3f& c, const Eigen::Vector2f& sz, const Eigen::Quaternionf& ori)
-      : center(c), size(Eigen::Vector3f(sz.x(), sz.y(), 0.01f)), orientation(ori) {}
-};
-
 template <typename PointT>
 class RadialExtremumDetector {
  public:
   RadialExtremumDetector(const pcproc::RadialSplitter<PointT>& splitter) : splitter_{splitter} {}
 
-  std::pair<BoundingBox3D, typename pcl::PointCloud<PointT>::Ptr> execute() {
+  std::pair<geometry::BoundingBox3D, typename pcl::PointCloud<PointT>::Ptr> execute() {
     std::vector<float> angles;
     std::vector<typename pcl::PointCloud<PointT>::Ptr> points_list;
     splitter_.detect(angles, points_list);
@@ -244,15 +234,15 @@ class RadialExtremumDetector {
     Eigen::Vector3f centroid = pca.getMean().head(3);
 
     // min_pointsの点群を，原点がcentroidのplane_xとplane_yの軸からなる平面に射影する.
-    Eigen::Matrix4f projection_matrix = Eigen::Matrix4f::Identity();
-    projection_matrix.block<3, 1>(0, 0) = plane_x;
-    projection_matrix.block<3, 1>(0, 1) = plane_y;
-    projection_matrix.block<3, 1>(0, 2) = plane_z;
-    projection_matrix.block<3, 1>(0, 3) = centroid;
-    Eigen::Matrix4f inverse_projection_matrix = projection_matrix.inverse();
+    Eigen::Matrix4d projection_matrix = Eigen::Matrix4d::Identity();
+    projection_matrix.block<3, 1>(0, 0) = plane_x.cast<double>();
+    projection_matrix.block<3, 1>(0, 1) = plane_y.cast<double>();
+    projection_matrix.block<3, 1>(0, 2) = plane_z.cast<double>();
+    projection_matrix.block<3, 1>(0, 3) = centroid.cast<double>();
     std::vector<Eigen::Vector2f> projected_points_2d;
     projected_points_2d.reserve(min_points->points.size());
     {
+      Eigen::Matrix4f inverse_projection_matrix = projection_matrix.inverse().cast<float>();
       typename pcl::PointCloud<PointT>::Ptr projected_points(new pcl::PointCloud<PointT>());
       pcl::transformPointCloud(*min_points, *projected_points, inverse_projection_matrix);
       for (const auto& pt : projected_points->points) {
@@ -291,7 +281,7 @@ class RadialExtremumDetector {
     gtsam::Point2 initial_size(initial_width, initial_height);
 
     // auto noise = gtsam::noiseModel::Isotropic::Sigma(2, 0.05);
-    BoundingBox3D bbox;
+    geometry::BoundingBox3D bbox;
     try {
       auto [optimized_pose, optimized_size] = rect_fitter.Optimize(projected_points_2d, initial_pose, initial_size);
       std::cout << "optimized pose: " << optimized_pose << std::endl;
@@ -299,18 +289,18 @@ class RadialExtremumDetector {
 
       // projection_matrixで平面に投影された最適化された矩形(optimized_pose, optimized_size)を3Dに戻す.
       {
-        Eigen::Vector3f optimized_pose_3d{optimized_pose.x(), optimized_pose.y(), 0.0f};
-        Eigen::Vector3f bbox_center = projection_matrix.block<3, 3>(0, 0) * optimized_pose_3d + centroid;
-        Eigen::Quaternionf rot_z(Eigen::AngleAxisf(optimized_pose.theta(), Eigen::Vector3f::UnitZ()));
-        Eigen::Matrix3f rot_matrix;
+        Eigen::Vector3d optimized_pose_3d{optimized_pose.x(), optimized_pose.y(), 0.0f};
+        Eigen::Vector3d bbox_center = projection_matrix.block<3, 3>(0, 0) * optimized_pose_3d + centroid.cast<double>();
+        Eigen::Quaterniond rot_z(Eigen::AngleAxisd(optimized_pose.theta(), Eigen::Vector3d::UnitZ()));
+        Eigen::Matrix3d rot_matrix;
         rot_matrix.col(0) = projection_matrix.block<3, 1>(0, 0);
         rot_matrix.col(1) = projection_matrix.block<3, 1>(0, 1);
         rot_matrix.col(2) = projection_matrix.block<3, 1>(0, 2);
-        Eigen::Quaternionf plane_orientation(rot_matrix);
-        Eigen::Quaternionf bbox_orientation = plane_orientation * rot_z;
+        Eigen::Quaterniond plane_orientation(rot_matrix);
+        Eigen::Quaterniond bbox_orientation = plane_orientation * rot_z;
 
-        Eigen::Vector2f size_vec{optimized_size.x(), optimized_size.y()};
-        bbox = BoundingBox3D(bbox_center, size_vec, bbox_orientation);
+        Eigen::Vector3d size_vec{optimized_size.x(), optimized_size.y(), 0.0};
+        bbox = geometry::BoundingBox3D(bbox_center, size_vec, bbox_orientation);
       }
     } catch (const std::exception& e) {
       std::cerr << "Optimization failed: " << e.what() << std::endl;
