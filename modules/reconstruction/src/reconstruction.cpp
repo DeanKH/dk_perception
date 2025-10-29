@@ -115,6 +115,7 @@ void BoxInteriorReconstructor::overwriteTsdfVolumeBoxBoundary() {
       auto& voxel = block.getVoxelByLinearIndex(linear_index);
       const voxblox::Point& coord = block.computeCoordinatesFromLinearIndex(linear_index);
       if (coord.z() < 0.0) continue;
+      if (!(voxel.weight > 0.0)) continue;
       // 中心が(0,0), sizeがbox_.sizeのboxの境界上にあるかどうかを確認
       if (std::abs(coord.x()) >= (box_.size.x() * 0.5f - voxel_size_ * 0.5f) &&
               std::abs(coord.x()) <= (box_.size.x() * 0.5f + voxel_size_ * 0.5f) ||
