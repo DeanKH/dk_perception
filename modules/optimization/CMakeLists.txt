@@ -1,6 +1,7 @@
 set(MODULE_NAME optimization)
 
 find_package(GTSAM REQUIRED)
+find_package(voxblox REQUIRED)
 
 file(GLOB_RECURSE SOURCES src/*.cpp)
 
@@ -12,8 +13,10 @@ target_include_directories(
          $<INSTALL_INTERFACE:include> ${EIGEN3_INCLUDE_DIRS}
          ${OpenCV_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
 
-target_link_libraries(${MODULE_NAME} PUBLIC ${OpenCV_LIBRARIES}
-                                            ${PCL_LIBRARIES} gtsam)
+target_link_libraries(
+  ${MODULE_NAME}
+  PUBLIC ${OpenCV_LIBRARIES} ${PCL_LIBRARIES} gtsam voxblox::voxblox
+         dk_perception::geometry dk_perception::reconstruction)
 add_library(dk_perception::${MODULE_NAME} ALIAS ${MODULE_NAME})
 
 install(

@@ -32,7 +32,8 @@ std::string publishData(const rerun::RecordingStream& rec, const std::string& en
 
 std::string publishData(const rerun::RecordingStream& rec, const std::string& entity,
                         const dklib::perception::geometry::BoundingBox3D& bbox,
-                        const std::array<uint8_t, 4> color = {0, 255, 0, 255}, const float line_radius = 0.005f);
+                        const std::array<uint8_t, 4> color = {0, 255, 0, 255}, const float line_radius = 0.005f,
+                        rerun::components::FillMode fill_mode = rerun::components::FillMode::MajorWireframe);
 
 template <typename PointT>
 std::string publishData(const rerun::RecordingStream& rec, const std::string& entity,

@@ -1,5 +1,8 @@
 #include "dk_perception/rerun/publish_data.hpp"
 
+#include "rerun.hpp"
+#include "rerun/components/fill_mode.hpp"
+
 namespace dklib::perception::publisher {
 std::string publishData(const rerun::RecordingStream& rec, const std::string& entity,
                         const Eigen::Isometry3d& transform) {
@@ -17,7 +20,7 @@ std::string publishData(const rerun::RecordingStream& rec, const std::string& en
 
 std::string publishData(const rerun::RecordingStream& rec, const std::string& entity,
                         const dklib::perception::geometry::BoundingBox3D& bbox, const std::array<uint8_t, 4> color,
-                        const float line_radius) {
+                        const float line_radius, rerun::components::FillMode fill_mode) {
   std::vector<rerun::Vec3D> centers = {
       {bbox.center.cast<float>().x(), bbox.center.cast<float>().y(), bbox.center.cast<float>().z()}};
   std::vector<rerun::Vec3D> sizes = {
@@ -30,7 +33,8 @@ std::string publishData(const rerun::RecordingStream& rec, const std::string& en
   auto boxes = rerun::Boxes3D::from_centers_and_sizes(centers, sizes)
                    .with_quaternions(orientations)
                    .with_colors(colors)
-                   .with_radii({line_radius});
+                   .with_radii({line_radius})
+                   .with_fill_mode(fill_mode);
   std::string entity_path = entity + "/bbox";
   rec.log(entity_path, boxes);
   return entity_path;

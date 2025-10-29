@@ -94,6 +94,8 @@ class BoxInteriorReconstructor {
     return filtered_cloud;
   }
 
+  const voxblox::EsdfMap::Ptr& getEsdfMap() const { return esdf_map_; }
+
  private:
   geometry::BoundingBox3D box_;
   float voxel_size_ = 0.02f;
