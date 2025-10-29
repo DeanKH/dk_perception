@@ -116,7 +116,7 @@ std::string publishVoxelData(const rerun::RecordingStream& rec, const std::strin
   sizes.reserve(cloud->size());
   for (const auto& p : cloud->points) {
     rerun::Vec3D center{p.x, p.y, p.z};
-    rerun::Vec3D size{voxel_size, voxel_size, voxel_size};
+    rerun::Vec3D size{voxel_size * 0.5f, voxel_size * 0.5f, voxel_size * 0.5f};
     centers.push_back(center);
     sizes.push_back(size);
   }
@@ -134,7 +134,7 @@ std::string publishVoxelData(const rerun::RecordingStream& rec, const std::strin
     } else {
       double diff = intensity_max - p.intensity;
       auto c = voxblox::rainbowColorMap(diff / intensity_max);
-      colors.emplace_back(c.r, c.g, c.b, 5);
+      colors.emplace_back(c.r, c.g, c.b, 20);
     }
   }
 

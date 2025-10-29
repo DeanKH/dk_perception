@@ -38,6 +38,10 @@ class BoxInteriorReconstructor {
 
   const voxblox::Layer<voxblox::TsdfVoxel>& getTsdfLayer() const { return tsdf_map_->getTsdfLayer(); }
 
+  void overwriteTsdfVolumeBoxBoundary();
+
+  void cropTsdfVolumeOutsideBox();
+
   pcl::PointCloud<pcl::PointXYZI> getSdfVoxelInBox() const {
     pcl::PointCloud<pcl::PointXYZI> cloud;
     voxblox::createDistancePointcloudFromTsdfLayer(tsdf_map_->getTsdfLayer(), &cloud);
