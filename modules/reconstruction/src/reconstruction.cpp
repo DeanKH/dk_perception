@@ -121,7 +121,7 @@ void BoxInteriorReconstructor::overwriteTsdfVolumeBoxBoundary() {
               std::abs(coord.x()) <= (box_.size.x() * 0.5f + voxel_size_ * 0.5f) ||
           std::abs(coord.y()) >= (box_.size.y() * 0.5f - voxel_size_ * 0.5f) &&
               std::abs(coord.y()) <= (box_.size.y() * 0.5f + voxel_size_ * 0.5f)) {
-        voxel.distance = 0.0f;
+        voxel.distance = -voxel_size_ * 0.5f;
         voxel.weight = 100.0f;
       }
     }
