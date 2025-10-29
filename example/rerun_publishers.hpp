@@ -134,7 +134,7 @@ std::string publishVoxelData(const rerun::RecordingStream& rec, const std::strin
     } else {
       double diff = intensity_max - p.intensity;
       auto c = voxblox::rainbowColorMap(diff / intensity_max);
-      colors.emplace_back(c.r, c.g, c.b, 20);
+      colors.emplace_back(c.r, c.g, c.b, 100);
     }
   }
 
