@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
   ecloud_filtered->reserve(ecloud->size());
   const double target_half = 0.1f;
   for (const auto& point : ecloud->points) {
-    if (point.intensity > target_half) {
+    if (point.intensity > target_half && point.intensity < voxel_size + target_half) {
       ecloud_filtered->points.push_back(point);
     }
   }
