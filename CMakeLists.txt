@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(dk_perception)
 
-# Set the C++ standard to C++17
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -38,11 +37,17 @@ if(BUILD_TESTING)
   FetchContent_MakeAvailable(Catch2)
 endif()
 
-add_subdirectory(modules/type)
-add_subdirectory(modules/detection)
-add_subdirectory(modules/image_processing)
-add_subdirectory(modules/pointcloud_processing)
-add_subdirectory(modules/dnn)
+file(
+  GLOB MODULE_DIRS
+  RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+  "modules/*")
+foreach(MODULE_DIR ${MODULE_DIRS})
+  if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${MODULE_DIR})
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${MODULE_DIR}/CMakeLists.txt)
+      add_subdirectory(${MODULE_DIR})
+    endif()
+  endif()
+endforeach()
 
 option(BUILD_EXAMPLES "Build examples" ON)
 

@@ -1,27 +1,24 @@
-# get file paths
+set(MODULE_NAME reconstruction)
 
-file(GLOB_RECURSE SOURCES src/**/*.cpp)
+find_package(voxblox REQUIRED)
 
-add_library(detection SHARED ${SOURCES})
+file(GLOB_RECURSE SOURCES src/*.cpp)
+
+add_library(${MODULE_NAME} SHARED ${SOURCES})
+
 target_include_directories(
-  detection
+  ${MODULE_NAME}
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
          $<INSTALL_INTERFACE:include> ${EIGEN3_INCLUDE_DIRS}
          ${OpenCV_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
 
 target_link_libraries(
-  detection
-  PUBLIC ${OpenCV_LIBRARIES}
-         ${PCL_LIBRARIES}
-         dk_perception::type
-         dk_perception::geometry
-         dk_perception::dnn
-         dk_perception::pcproc
-         dk_perception::optimization)
+  ${MODULE_NAME} PUBLIC ${OpenCV_LIBRARIES} ${PCL_LIBRARIES} voxblox::voxblox
+                        dk_perception::geometry)
+add_library(dk_perception::${MODULE_NAME} ALIAS ${MODULE_NAME})
 
-add_library(dk_perception::detection ALIAS detection)
 install(
-  TARGETS detection
+  TARGETS ${MODULE_NAME}
   EXPORT dk_perception-targets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
@@ -42,6 +39,4 @@ install(
   NAMESPACE dk_perception::
   DESTINATION lib/cmake/dk_perception)
 
-if(BUILD_TESTING)
-  add_subdirectory(test)
-endif()
+# if(BUILD_TESTING) add_subdirectory(test) endif()
