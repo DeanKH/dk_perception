@@ -21,6 +21,18 @@ BoxInteriorReconstructor::BoxInteriorReconstructor(const geometry::BoundingBox3D
 
   integrator_ = voxblox::TsdfIntegratorFactory::create(voxblox::TsdfIntegratorType::kFast, integrator_config,
                                                        tsdf_map_->getTsdfLayerPtr());
+
+  voxblox::EsdfMap::Config esdf_config;
+  esdf_config.esdf_voxel_size = config.tsdf_voxel_size;
+  esdf_config.esdf_voxels_per_side = config.tsdf_voxels_per_side;
+
+  esdf_map_ = std::make_shared<voxblox::EsdfMap>(esdf_config);
+  auto esdf_integrator_config = voxblox::EsdfIntegrator::Config();
+  esdf_integrator_config.min_distance_m = integrator_config.default_truncation_distance / 2.0;
+  esdf_integrator_config.full_euclidean_distance = false;
+
+  esdf_integrator_.reset(
+      new voxblox::EsdfIntegrator(esdf_integrator_config, tsdf_map_->getTsdfLayerPtr(), esdf_map_->getEsdfLayerPtr()));
 }
 
 template <>
@@ -45,6 +57,8 @@ void BoxInteriorReconstructor::update(const pcl::PointCloud<pcl::PointXYZRGB>& c
   std::cout << "boxtop2camera_pos: " << boxtop2camera_position.cast<float>().transpose() << std::endl;
 
   integrator_->integratePointCloud(T_L_C, pointcloud, colors);
+
+  esdf_integrator_->updateFromTsdfLayerBatch();
 }
 
 }  // namespace dklib::perception::reconstruction

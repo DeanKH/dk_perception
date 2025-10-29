@@ -85,8 +85,12 @@ int main(int argc, char* argv[]) {
 
   pcl::PointCloud<pcl::PointXYZI>::Ptr icloud(new pcl::PointCloud<pcl::PointXYZI>());
   *icloud = reconstructor.getSdfVoxelInBox();
-  publishData(rec, "box_opening/tsdf", Eigen::Isometry3d(camera2boxtop_transform));
-  publishVoxelData<pcl::PointXYZI>(rec, "box_opening/tsdf", icloud, voxel_size);
+  publishData(rec, "box_opening/sdf", Eigen::Isometry3d(camera2boxtop_transform));
+  publishVoxelData<pcl::PointXYZI>(rec, "box_opening/sdf/tsdf", icloud, voxel_size);
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr ecloud(new pcl::PointCloud<pcl::PointXYZI>());
+  *ecloud = reconstructor.getEsdfVoxelInBox();
+  publishVoxelData<pcl::PointXYZI>(rec, "box_opening/sdf/esdf", ecloud, voxel_size);
 
   return 0;
 }

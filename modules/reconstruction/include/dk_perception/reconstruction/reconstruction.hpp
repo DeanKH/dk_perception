@@ -2,8 +2,10 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <voxblox/core/common.h>
+#include <voxblox/core/esdf_map.h>
 #include <voxblox/core/layer.h>
 #include <voxblox/core/tsdf_map.h>
+#include <voxblox/integrator/esdf_integrator.h>
 #include <voxblox/integrator/tsdf_integrator.h>
 
 #include <dk_perception/geometry/bounding_box_3d.hpp>
@@ -62,12 +64,41 @@ class BoxInteriorReconstructor {
     return filtered_cloud;
   }
 
+  pcl::PointCloud<pcl::PointXYZI> getEsdfVoxelInBox() const {
+    pcl::PointCloud<pcl::PointXYZI> cloud;
+    voxblox::createDistancePointcloudFromEsdfLayer(esdf_map_->getEsdfLayer(), &cloud);
+
+    // filter by box
+    pcl::PointCloud<pcl::PointXYZI> filtered_cloud;
+    filtered_cloud.reserve(cloud.size());
+    const double voxel_half_size = voxel_size_ * 0.5;
+    for (const auto& point : cloud.points) {
+      const bool is_inside = [&]() {
+        Eigen::Vector3d p(point.x, point.y, point.z);
+        if (p.z() < 0.0) return false;
+        if (p.x() < (box_.size.x() * -0.5 - voxel_half_size) || p.x() > (box_.size.x() * 0.5 + voxel_half_size))
+          return false;
+        if (p.y() < (box_.size.y() * -0.5 - voxel_half_size) || p.y() > (box_.size.y() * 0.5 + voxel_half_size))
+          return false;
+
+        return true;
+      }();
+      if (is_inside) {
+        filtered_cloud.push_back(point);
+      }
+    }
+    return filtered_cloud;
+  }
+
  private:
   geometry::BoundingBox3D box_;
   float voxel_size_ = 0.02f;
 
   std::shared_ptr<voxblox::TsdfMap> tsdf_map_;
   voxblox::TsdfIntegratorBase::Ptr integrator_;
+
+  std::shared_ptr<voxblox::EsdfMap> esdf_map_;
+  std::unique_ptr<voxblox::EsdfIntegrator> esdf_integrator_;
   float box_max_half_size_;
 };
 }  // namespace dklib::perception::reconstruction

@@ -65,4 +65,20 @@ inline void createDistancePointcloudFromTsdfLayer(const Layer<TsdfVoxel>& layer,
   assert(pointcloud);
   createColorPointcloudFromLayer<TsdfVoxel>(layer, &visualizeDistanceIntensityTsdfVoxels, pointcloud);
 }
+
+inline bool visualizeDistanceIntensityEsdfVoxels(const EsdfVoxel& voxel, const Point& /*coord*/, double* intensity) {
+  assert(intensity);
+  if (voxel.observed) {
+    *intensity = voxel.distance;
+    return true;
+  }
+  return false;
+}
+
+inline void createDistancePointcloudFromEsdfLayer(const Layer<EsdfVoxel>& layer,
+                                                  pcl::PointCloud<pcl::PointXYZI>* pointcloud) {
+  assert(pointcloud);
+  createColorPointcloudFromLayer<EsdfVoxel>(layer, &visualizeDistanceIntensityEsdfVoxels, pointcloud);
+}
+
 }  // namespace voxblox
