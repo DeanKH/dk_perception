@@ -1,28 +1,24 @@
+#include <pcl/io/ply_io.h>
 #include <pcl/point_cloud.h>
-#include <dk_perception/pointcloud_processing/scanline_splitter.hpp>
+#include <pcl/visualization/pcl_visualizer.h>
+
+#include <dk_perception/pcproc/scanline_splitter.hpp>
 #include <dk_perception/type/pointcloud/iteratable_colorized_pointcloud_accessor.hpp>
 #include <opencv2/opencv.hpp>
-#include <pcl/visualization/pcl_visualizer.h>
 #include <thread>
-#include <pcl/io/ply_io.h>
 
-int main(int argc, char * argv[])
-{
-  cv::Mat rgb_img = cv::imread(
-    "/home/dean/workspace/src/dklib/.archives/scripts/rgbd_data/color.jpg");
-  cv::Mat depth_img = cv::imread(
-    "/home/dean/workspace/src/dklib/.archives/scripts/rgbd_data/depth.png", cv::IMREAD_ANYDEPTH);
-  std::string camera_info_file =
-    "/home/dean/workspace/src/dklib/.archives/scripts/rgbd_data/rgb_camera_info.json";
+int main(int argc, char* argv[]) {
+  cv::Mat rgb_img = cv::imread("/home/dean/workspace/src/dklib/.archives/scripts/rgbd_data/color.jpg");
+  cv::Mat depth_img =
+      cv::imread("/home/dean/workspace/src/dklib/.archives/scripts/rgbd_data/depth.png", cv::IMREAD_ANYDEPTH);
+  std::string camera_info_file = "/home/dean/workspace/src/dklib/.archives/scripts/rgbd_data/rgb_camera_info.json";
   Eigen::Matrix3f intrinsic;
-  intrinsic << 419.82196044921875, 0.0, 420.063720703125, 0.0, 418.7557067871094,
-    246.293212890625, 0.0,
-    0.0, 1.0;
-  dklib::perception::type::pointcloud::DepthImageSet rgbd_image_set(rgb_img, depth_img, intrinsic,
-    0.001);
+  intrinsic << 419.82196044921875, 0.0, 420.063720703125, 0.0, 418.7557067871094, 246.293212890625, 0.0, 0.0, 1.0;
+  dklib::perception::type::pointcloud::DepthImageSet rgbd_image_set(rgb_img, depth_img, intrinsic, 0.001);
 
   dklib::perception::type::pointcloud::IteratableColorizedPointCloudReadOnlyAccessor<
-    dklib::perception::type::pointcloud::DepthImageSet> accessor(rgbd_image_set);
+      dklib::perception::type::pointcloud::DepthImageSet>
+      accessor(rgbd_image_set);
 
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
   point_cloud->reserve(accessor.size());
@@ -44,9 +40,8 @@ int main(int argc, char * argv[])
 
   pcl::io::savePLYFile("pc.ply", *point_cloud);
 
-  dklib::perception::pointcloud_processing::ScanlineSplitter<pcl::PointXYZRGB> splitter;
-  using SplitAxis =
-    dklib::perception::pointcloud_processing::ScanlineSplitter<pcl::PointXYZRGB>::SplitAxis;
+  dklib::perception::pcproc::ScanlineSplitter<pcl::PointXYZRGB> splitter;
+  using SplitAxis = dklib::perception::pcproc::ScanlineSplitter<pcl::PointXYZRGB>::SplitAxis;
   // split by scan lines
   auto regions = splitter.splitByScanLines(point_cloud, SplitAxis::kX);
   // apply color to each region, i % 2 == 0 ? red : green
