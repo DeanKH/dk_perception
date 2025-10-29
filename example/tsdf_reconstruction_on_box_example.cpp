@@ -92,5 +92,17 @@ int main(int argc, char* argv[]) {
   *ecloud = reconstructor.getEsdfVoxelInBox();
   publishVoxelData<pcl::PointXYZI>(rec, "box_opening/sdf/esdf", ecloud, voxel_size);
 
+  pcl::PointCloud<pcl::PointXYZI>::Ptr ecloud_filtered(new pcl::PointCloud<pcl::PointXYZI>());
+  ecloud_filtered->reserve(ecloud->size());
+  const double target_half = 0.1f;
+  for (const auto& point : ecloud->points) {
+    std::cout << "esdf distance: " << point.intensity << std::endl;
+    if (point.intensity > target_half) {
+      ecloud_filtered->points.push_back(point);
+    }
+  }
+
+  publishVoxelData<pcl::PointXYZI>(rec, "box_opening/sdf/esdf/placeable", ecloud_filtered, voxel_size);
+
   return 0;
 }
