@@ -46,7 +46,31 @@ target_include_directories(
 target_link_libraries(radial_extremum_detect_example dk_perception::detection
                       dk_perception::type rerun_sdk)
 
+add_executable(radial_splitter_example radial_splitter_example.cpp)
+
+target_include_directories(
+  radial_splitter_example PUBLIC include ${EIGEN3_INCLUDE_DIRS}
+                                 ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(radial_splitter_example dk_perception::detection
+                      dk_perception::type rerun_sdk)
+
 if(USE_PERF)
   target_link_libraries(radial_extremum_detect_example ${GPERFTOOLS_PROFILER})
   # target_compile_definitions(radial_extremum_detect_example PRIVATE USE_PERF)
 endif()
+
+add_executable(tsdf_reconstruction_example tsdf_reconstruction_example.cpp)
+target_include_directories(
+  tsdf_reconstruction_example PUBLIC include ${EIGEN3_INCLUDE_DIRS}
+                                     ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(tsdf_reconstruction_example dk_perception::reconstruction
+                      dk_perception::detection dk_perception::type rerun_sdk)
+
+add_executable(tsdf_reconstruction_on_box_example
+               tsdf_reconstruction_on_box_example.cpp)
+target_include_directories(
+  tsdf_reconstruction_on_box_example PUBLIC include ${EIGEN3_INCLUDE_DIRS}
+                                            ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(
+  tsdf_reconstruction_on_box_example dk_perception::reconstruction
+  dk_perception::detection dk_perception::type rerun_sdk)

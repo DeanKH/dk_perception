@@ -1,17 +1,6 @@
-set(MODULE_NAME rerun)
+set(MODULE_NAME reconstruction)
 
-# logging by rerun.io
-option(USE_RERUN_LOGING "Use rerun.io" ON)
-set(DK_LOGGING_IMPLEMENTATION_DEPENDENCY "")
-if(USE_RERUN_LOGING)
-  include(FetchContent)
-  FetchContent_Declare(
-    rerun_sdk
-    URL https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip
-  )
-  FetchContent_MakeAvailable(rerun_sdk)
-  set(DK_LOGGING_IMPLEMENTATION_DEPENDENCY "rerun_sdk")
-endif()
+find_package(voxblox REQUIRED)
 
 file(GLOB_RECURSE SOURCES src/*.cpp)
 
@@ -24,10 +13,8 @@ target_include_directories(
          ${OpenCV_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
 
 target_link_libraries(
-  ${MODULE_NAME}
-  PUBLIC ${OpenCV_LIBRARIES} ${PCL_LIBRARIES}
-         ${DK_LOGGING_IMPLEMENTATION_DEPENDENCY} dk_perception::geometry)
-
+  ${MODULE_NAME} PUBLIC ${OpenCV_LIBRARIES} ${PCL_LIBRARIES} voxblox::voxblox
+                        dk_perception::geometry)
 add_library(dk_perception::${MODULE_NAME} ALIAS ${MODULE_NAME})
 
 install(
@@ -51,3 +38,5 @@ install(
   FILE dk_perception-targets.cmake
   NAMESPACE dk_perception::
   DESTINATION lib/cmake/dk_perception)
+
+# if(BUILD_TESTING) add_subdirectory(test) endif()

@@ -1,4 +1,3 @@
-#include <gperftools/profiler.h>
 #include <pcl/common/centroid.h>
 #include <pcl/common/transforms.h>
 #include <pcl/filters/project_inliers.h>
@@ -63,13 +62,9 @@ int main(int argc, char* argv[]) {
   }
   std::cout << "Loading point cloud: " << pcd_file << std::endl;
 
-  auto rec = rerun::RecordingStream("radial_extremum_detect_example");
-  rec.spawn().exit_on_failure();
-
-  ProfilerStart("profile.prof");
+  auto start_time = std::chrono::high_resolution_clock::now();
 
   using PointType = pcl::PointXYZRGB;
-
   pcl::PointCloud<PointType>::Ptr cloud(new pcl::PointCloud<PointType>());
   if (pcl::io::loadPLYFile(pcd_file, *cloud) == -1) {
     std::cerr << "Failed to load point cloud: " << pcd_file << std::endl;
@@ -79,31 +74,47 @@ int main(int argc, char* argv[]) {
 
   dklib::perception::pcproc::RadialSplitter<PointType> detector;
   Eigen::Vector3f origin = Eigen::Vector3f::Zero();
+  // const Eigen::Vector3f origin = [&cloud]() {
+  //   pcl::PointXYZ origin;
+  //   pcl::computeCentroid<PointType, pcl::PointXYZ>(*cloud, origin);
+
+  //   return Eigen::Vector3f(origin.x, origin.y, origin.z);
+  // }();
 
   const Eigen::Vector3f offset = -origin;
 
   Eigen::Vector3f axis = Eigen::Vector3f::UnitZ();
   detector.setInputCloud(cloud);
-  const float step = 10.0f;  // deg
-  detector.setAngleStep(step);
+  detector.setAngleStep(10.0f);
   detector.setWidth(0.01f);
   detector.setCenter(offset);
   detector.setAxis(axis);
 
-  auto start_time = std::chrono::high_resolution_clock::now();
-  dklib::perception::detection::d3::RadialExtremumDetector<PointType> radial_detector(detector);
-  auto [box, points_list] = radial_detector.execute();
+  std::vector<float> angles;
+  std::vector<typename pcl::PointCloud<PointType>::Ptr> points_list;
+  detector.detect(angles, points_list);
+  // points_listの各セクションの点群を赤，緑，青で交互に色付けする.
+  for (size_t i = 0; i < points_list.size(); ++i) {
+    uint8_t r = (i % 3 == 0) ? 255 : 0;
+    uint8_t g = (i % 3 == 1) ? 255 : 0;
+    uint8_t b = (i % 3 == 2) ? 255 : 0;
+    for (auto& pt : points_list[i]->points) {
+      pt.r = r;
+      pt.g = g;
+      pt.b = b;
+    }
+  }
 
-  auto end_time = std::chrono::high_resolution_clock::now();
-  ProfilerStop();
+  auto rec = rerun::RecordingStream("radial_extremum_detect_example");
+  rec.spawn().exit_on_failure();
 
-  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-  std::cout << "Execution time: " << duration.count() << " ms" << std::endl;
-
-  publishData(rec, "radial_extremum", box);
   publishData<PointType>(rec, "points", cloud);
-  auto pl = radial_detector.getInlinePoints();
-  publishData<PointType>(rec, "inline_points", pl);
+  // publish splitted points
+  for (size_t i = 0; i < points_list.size(); ++i) {
+    publishData<PointType>(rec, "splitted_points/section_" + std::to_string(i), points_list[i]);
+  }
+  // auto pl = radial_detector.getInlinePoints();
+  // publishData<PointType>(rec, "inline_points", pl);
 
   return 0;
 }

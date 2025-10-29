@@ -37,39 +37,78 @@ class RadialSplitter {
     point_indices_list.resize(num_steps);
 
     Eigen::Vector3f ref_dir = axis_.unitOrthogonal();  // Reference direction on the plane orthogonal to axis_
+    // before 65ms to process
 
-    for (int i = 0; i < num_steps; ++i) {
-      float angle = i * angle_deg_step_;
-      angles.push_back(angle);
+    const Eigen::Vector3f new_y_axis = axis_.cross(ref_dir).normalized();
+    // const Eigen::Vector3f new_x_axis = new_y_axis.cross(axis_).normalized();
+    Eigen::Matrix3f rotation_matrix;
+    rotation_matrix.col(0) = ref_dir;
+    rotation_matrix.col(1) = new_y_axis;
+    rotation_matrix.col(2) = axis_;
 
-      // ref_dirをaxis_を軸にangle度回転させる回転行列を作成
-      Eigen::AngleAxisf rotation(-M_PI * angle / 180.0f, axis_);
-      Eigen::Quaternionf q(rotation);
-
-      // TODO(deankh): Too slowly
-      typename pcl::PointCloud<PointT>::Ptr rotated_cloud(new pcl::PointCloud<PointT>());
+    // 法線がaxis_で新しいX軸がref_dirの平面に投影する
+    {
+      typename pcl::PointCloud<PointT>::Ptr projected_cloud(new pcl::PointCloud<PointT>());
       Eigen::Affine3f transform = Eigen::Affine3f::Identity();
-      transform.rotate(q);
-      transform.translate(center_);
-      pcl::transformPointCloud(*input_cloud_, *rotated_cloud, transform);
+      transform.linear() = rotation_matrix.transpose();
+      transform.translation() = -rotation_matrix.transpose() * center_;
+      pcl::transformPointCloud(*input_cloud_, *projected_cloud, transform);
+      // zの値を無視する
 
-      pcl::PassThrough<PointT> pass_y;
-      pass_y.setInputCloud(rotated_cloud);
-      pass_y.setFilterFieldName("y");
-      pass_y.setFilterLimits(-width_ / 2.0f, width_ / 2.0f);
+      // projected_cloudのXY成分でベクトルを作成し，X軸正方向とのなす角を0~2piで計算する.
+      std::vector<float> angles_rad;
+      angles_rad.reserve(projected_cloud->size());
+      for (const auto& pt : projected_cloud->points) {
+        float angle = -std::atan2(pt.x, pt.y);
+        if (angle < 0) {
+          angle += 2.0f * M_PI;
+        }
+        angles_rad.push_back(angle);
+      }
+      std::vector<size_t> sorted_indices(angles_rad.size());
+      std::iota(sorted_indices.begin(), sorted_indices.end(), 0);
+      // angles_radでソートしたときのインデックスを取得する.angle_rad自体もソートする
+      std::sort(sorted_indices.begin(), sorted_indices.end(),
+                [&angles_rad](size_t a, size_t b) { return angles_rad[a] < angles_rad[b]; });
+      std::vector<float> sorted_angles;
+      sorted_angles.reserve(angles_rad.size());
+      for (size_t idx : sorted_indices) {
+        sorted_angles.push_back(angles_rad[idx]);
+      }
 
-      pcl::PointIndices::Ptr y_indices(new pcl::PointIndices());
-      pass_y.filter(y_indices->indices);
+      // 前のloopのupper_boundを記録しておいて高速化する
+      // std::vector<float>::iterator last_upper_it = sorted_angles.begin();
+      for (int i = 0; i < num_steps; ++i) {
+        const float angle_start = i * angle_deg_step_;
+        const float angle_end = angle_start + angle_deg_step_;
+        angles.push_back(angle_start);
+        // sorted_angles からangle_start~angle_endの範囲にある点のインデックスを取得する.
+        // std::upper_boundを使って高速化
+        pcl::PointIndices::Ptr final_indices(new pcl::PointIndices());
+        auto lower_it = std::lower_bound(sorted_angles.begin(), sorted_angles.end(), angle_start * M_PI / 180.0f);
+        if (lower_it == sorted_angles.end()) {
+          // 範囲外
+          point_indices_list[i] = final_indices;
+          continue;
+        }
 
-      pcl::PassThrough<PointT> pass_x;
-      pass_x.setInputCloud(rotated_cloud);
-      pass_x.setIndices(y_indices);
-      pass_x.setFilterFieldName("x");
-      pass_x.setFilterLimits(min_distance_, std::numeric_limits<float>::max());
+        auto upper_it = std::upper_bound(lower_it, sorted_angles.end(), angle_end * M_PI / 180.0f);
+        if (upper_it == lower_it) {
+          // 範囲外
+          point_indices_list[i] = final_indices;
+          continue;
+        }
 
-      pcl::PointIndices::Ptr final_indices(new pcl::PointIndices());
-      pass_x.filter(final_indices->indices);
-      point_indices_list[i] = final_indices;
+        // iterator間の距離でfinal_indicesの要素数を確保する
+        final_indices->indices.reserve(std::distance(lower_it, upper_it));
+        for (auto it = lower_it; it != upper_it; ++it) {
+          size_t sorted_idx = std::distance(sorted_angles.begin(), it);
+          size_t original_idx = sorted_indices[sorted_idx];
+          final_indices->indices.push_back(static_cast<int>(original_idx));
+        }
+
+        point_indices_list[i] = final_indices;
+      }
     }
   }
 

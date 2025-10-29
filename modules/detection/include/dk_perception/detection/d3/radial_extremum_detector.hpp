@@ -230,6 +230,12 @@ class RadialExtremumDetector {
     Eigen::Vector3f plane_z = plane_x.cross(plane_y);
     plane_z.normalize();
 
+    // plane_zの向きが原点を向いている場合は反転する
+    if (plane_z.dot(Eigen::Vector3f::UnitZ()) < 0) {
+      plane_z = -plane_z;
+      plane_y = -plane_y;
+    }
+
     // min_pointsの重心を計算する.
     Eigen::Vector3f centroid = pca.getMean().head(3);
 
