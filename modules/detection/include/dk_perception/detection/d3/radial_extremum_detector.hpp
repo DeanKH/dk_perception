@@ -100,7 +100,7 @@ class RadialExtremumDetector {
     const float plane_distance_threshold = 0.02;
     pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
     {
-      pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+      pcl::SACSegmentation<PointT> seg;
       seg.setOptimizeCoefficients(true);
       seg.setModelType(pcl::SACMODEL_PLANE);
       seg.setMethodType(pcl::SAC_RANSAC);
@@ -184,9 +184,9 @@ class RadialExtremumDetector {
       }
 
       // subsetの内，local_valid_indicesに含まれる点群をProjectInliersで平面に射影する．
-      pcl::PointCloud<pcl::PointXYZRGB>::Ptr subset_projected(new pcl::PointCloud<pcl::PointXYZRGB>());
+      typename pcl::PointCloud<PointT>::Ptr subset_projected(new pcl::PointCloud<PointT>());
       {
-        pcl::ProjectInliers<pcl::PointXYZRGB> proj;
+        pcl::ProjectInliers<PointT> proj;
         proj.setModelType(pcl::SACMODEL_PLANE);
         proj.setInputCloud(subset);
         proj.setIndices(local_valid_indices);
@@ -195,7 +195,7 @@ class RadialExtremumDetector {
       }
 
       // subset_projectedの点群から，originに最も近い点を抽出する．
-      pcl::PointXYZRGB closest_point = *std::min_element(
+      PointT closest_point = *std::min_element(
           subset_projected->points.begin(), subset_projected->points.end(), [&](const auto& a, const auto& b) {
             float dist_a = std::sqrt(std::pow(a.x - origin.x(), 2) + std::pow(a.y - origin.y(), 2) +
                                      std::pow(a.z - origin.z(), 2));

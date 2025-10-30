@@ -45,7 +45,7 @@ void projectXZPlane(const typename pcl::PointCloud<PointT>::Ptr& input_cloud, co
   auto coeffs =
       calcPlaneFromOriginAndVectors(Eigen::Vector3f::Zero(), Eigen::Vector3f::UnitX(), Eigen::Vector3f::UnitZ());
   pcl::transformPointCloud(*input_cloud, *output_cloud, transform);
-  pcl::ProjectInliers<pcl::PointXYZRGB> projector;
+  pcl::ProjectInliers<PointT> projector;
   projector.setModelType(pcl::SACMODEL_PLANE);
   projector.setInputCloud(output_cloud);
   projector.setModelCoefficients(coeffs);
