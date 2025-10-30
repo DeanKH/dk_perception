@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cassert>
 #include <dk_perception/geometry.hpp>
+#include <memory>
 #include <rerun.hpp>
 #include <rerun/archetypes/boxes3d.hpp>
 #include <rerun/archetypes/line_strips3d.hpp>
@@ -27,17 +28,22 @@
 #include "rerun/rotation3d.hpp"
 
 namespace dklib::perception::publisher {
-std::string publishData(const rerun::RecordingStream& rec, const std::string& entity,
+std::string publishData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                         const Eigen::Isometry3d& transform);
 
-std::string publishData(const rerun::RecordingStream& rec, const std::string& entity,
+std::string publishData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                         const dklib::perception::geometry::BoundingBox3D& bbox,
                         const std::array<uint8_t, 4> color = {0, 255, 0, 255}, const float line_radius = 0.005f,
                         rerun::components::FillMode fill_mode = rerun::components::FillMode::MajorWireframe);
 
 template <typename PointT>
-std::string publishData(const rerun::RecordingStream& rec, const std::string& entity,
+std::string publishData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                         typename pcl::PointCloud<PointT>::Ptr& cloud, const float radius = 0.005f) {
+  const std::string entity_path = entity + "/points";
+  if (!rec) {
+    return entity_path;
+  }
+
   std::vector<rerun::Vec3D> pts;
   pts.reserve(cloud->size());
   for (const auto& p : cloud->points) {
@@ -49,18 +55,20 @@ std::string publishData(const rerun::RecordingStream& rec, const std::string& en
     colors.emplace_back(p.r, p.g, p.b, 255);
   }
   auto point_cloud = rerun::Points3D(pts).with_colors(colors).with_radii({radius});
-  std::string entity_path = entity + "/points";
-  rec.log(entity_path, point_cloud);
+  rec->log(entity_path, point_cloud);
   return entity_path;
 }
 
 template <>
-std::string publishData<pcl::PointXYZI>(const rerun::RecordingStream& rec, const std::string& entity,
+std::string publishData<pcl::PointXYZI>(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                                         typename pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud, const float radius);
 
 template <typename PointT>
-std::string publishVoxelData(const rerun::RecordingStream& rec, const std::string& entity,
+std::string publishVoxelData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                              typename pcl::PointCloud<PointT>::Ptr& cloud, const float voxel_size) {
+  if (!rec) {
+    return entity;
+  }
   rerun::Boxes3D boxes;
   std::vector<rerun::Vec3D> centers;
   std::vector<rerun::Vec3D> sizes;
@@ -93,7 +101,7 @@ std::string publishVoxelData(const rerun::RecordingStream& rec, const std::strin
   rerun::Boxes3D voxel_boxes = rerun::Boxes3D::from_centers_and_half_sizes(centers, sizes)
                                    .with_colors(colors)
                                    .with_fill_mode(rerun::FillMode::Solid);
-  rec.log(entity, voxel_boxes);
+  rec->log(entity, voxel_boxes);
   return entity;
 }
 }  // namespace dklib::perception::publisher

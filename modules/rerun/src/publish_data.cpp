@@ -4,8 +4,12 @@
 #include "rerun/components/fill_mode.hpp"
 
 namespace dklib::perception::publisher {
-std::string publishData(const rerun::RecordingStream& rec, const std::string& entity,
+std::string publishData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                         const Eigen::Isometry3d& transform) {
+  if (!rec) {
+    return entity;
+  }
+
   auto translation = rerun::Vec3D{transform.translation().cast<float>().x(), transform.translation().cast<float>().y(),
                                   transform.translation().cast<float>().z()};
   Eigen::Quaterniond q;
@@ -13,14 +17,19 @@ std::string publishData(const rerun::RecordingStream& rec, const std::string& en
   auto orientation = rerun::Quaternion::from_wxyz(q.w(), q.x(), q.y(), q.z());
   auto rotation = rerun::Rotation3D(orientation);
   auto tf = rerun::Transform3D::from_translation_rotation(translation, rotation);
-  rec.log(entity, tf);
+  rec->log(entity, tf);
 
   return entity;
 }
 
-std::string publishData(const rerun::RecordingStream& rec, const std::string& entity,
+std::string publishData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                         const dklib::perception::geometry::BoundingBox3D& bbox, const std::array<uint8_t, 4> color,
                         const float line_radius, rerun::components::FillMode fill_mode) {
+  const std::string entity_path = entity + "/bbox";
+  if (!rec) {
+    return entity_path;
+  }
+
   std::vector<rerun::Vec3D> centers = {
       {bbox.center.cast<float>().x(), bbox.center.cast<float>().y(), bbox.center.cast<float>().z()}};
   std::vector<rerun::Vec3D> sizes = {
@@ -35,14 +44,18 @@ std::string publishData(const rerun::RecordingStream& rec, const std::string& en
                    .with_colors(colors)
                    .with_radii({line_radius})
                    .with_fill_mode(fill_mode);
-  std::string entity_path = entity + "/bbox";
-  rec.log(entity_path, boxes);
+  rec->log(entity_path, boxes);
   return entity_path;
 }
 
 template <>
-std::string publishData<pcl::PointXYZI>(const rerun::RecordingStream& rec, const std::string& entity,
+std::string publishData<pcl::PointXYZI>(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                                         typename pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud, const float radius) {
+  const std::string entity_path = entity + "/points";
+  if (!rec) {
+    return entity_path;
+  }
+
   std::vector<rerun::Vec3D> pts;
   std::vector<rerun::Rgba32> colors;
   pts.reserve(cloud->size());
@@ -70,8 +83,7 @@ std::string publishData<pcl::PointXYZI>(const rerun::RecordingStream& rec, const
   }
 
   auto point_cloud = rerun::Points3D(pts).with_colors(colors).with_radii({radius});
-  std::string entity_path = entity + "/points";
-  rec.log(entity_path, point_cloud);
+  rec->log(entity_path, point_cloud);
   return entity_path;
 }
 
