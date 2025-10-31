@@ -3,7 +3,7 @@
 #include "rerun.hpp"
 #include "rerun/components/fill_mode.hpp"
 
-namespace dklib::perception::publisher {
+namespace rerun {
 std::string publishData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                         const Eigen::Isometry3d& transform) {
   if (!rec) {
@@ -87,4 +87,4 @@ std::string publishData<pcl::PointXYZI>(const std::shared_ptr<rerun::RecordingSt
   return entity_path;
 }
 
-}  // namespace dklib::perception::publisher
+}  // namespace rerun

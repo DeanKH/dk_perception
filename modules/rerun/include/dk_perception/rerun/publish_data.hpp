@@ -27,7 +27,7 @@
 #include "rerun/archetypes/transform3d.hpp"
 #include "rerun/rotation3d.hpp"
 
-namespace dklib::perception::publisher {
+namespace rerun {
 std::string publishData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                         const Eigen::Isometry3d& transform);
 
@@ -104,4 +104,4 @@ std::string publishVoxelData(const std::shared_ptr<rerun::RecordingStream>& rec,
   rec->log(entity, voxel_boxes);
   return entity;
 }
-}  // namespace dklib::perception::publisher
+}  // namespace rerun
