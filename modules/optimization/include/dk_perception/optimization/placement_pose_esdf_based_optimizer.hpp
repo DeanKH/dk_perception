@@ -32,10 +32,31 @@ class PlacementPoseEsdfBasedOptimizer {
         if (point.intensity < min_distance_from_center || point.intensity > max_distance_from_center) {
           return false;
         }
-        filtered_cloud->points.push_back(point);
         return true;
       }();
-      if (is_inside) {
+
+      // boxの上端4点がesdfグリッド内に存在するか確認する
+      Eigen::Isometry3d box_iso = target_box.getIsometry();
+      const bool is_box_top_inside = [&]() {
+        box_iso.translation() = Eigen::Vector3d(point.x, point.y, point.z);
+        std::vector<Eigen::Vector3d> box_top_points;
+        box_top_points.emplace_back(target_box.size.x() * 0.5, target_box.size.y() * 0.5, target_box.size.z() * 0.5);
+        box_top_points.emplace_back(-target_box.size.x() * 0.5, target_box.size.y() * 0.5, target_box.size.z() * 0.5);
+        box_top_points.emplace_back(target_box.size.x() * 0.5, -target_box.size.y() * 0.5, target_box.size.z() * 0.5);
+        box_top_points.emplace_back(-target_box.size.x() * 0.5, -target_box.size.y() * 0.5, target_box.size.z() * 0.5);
+
+        bool all_points_valid = true;
+        for (const auto& pt : box_top_points) {
+          Eigen::Vector3d grid_point_at_sdf = box_iso * pt;
+          if (grid_point_at_sdf.z() <= 0.0) {
+            all_points_valid = false;
+            break;
+          }
+        }
+        return all_points_valid;
+      }();
+
+      if (is_inside && is_box_top_inside) {
         filtered_cloud->push_back(point);
       }
     }
