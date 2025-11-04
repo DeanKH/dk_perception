@@ -14,6 +14,13 @@ Eigen::Matrix4d BoundingBox3D::getTransformation() const {
   return transform;
 }
 
+Eigen::Isometry3d BoundingBox3D::getIsometry() const {
+  Eigen::Isometry3d isometry = Eigen::Isometry3d::Identity();
+  isometry.linear() = orientation.toRotationMatrix().cast<double>();
+  isometry.translation() = center.cast<double>();
+  return isometry;
+}
+
 BoundingBox3D BoundingBox3D::from_center_size(const Eigen::Vector3d& center, const Eigen::Vector3d& size,
                                               const Eigen::Quaterniond& orientation) {
   return BoundingBox3D(center, size, orientation);
