@@ -99,54 +99,53 @@ class PlacementPoseEsdfBasedOptimizer {
     geometry::BoundingBox3D optimized_box = target_box;
     optimized_box.center = Eigen::Vector3d(best_point.x, best_point.y, best_point.z);
     return optimized_box;
+  }
 
-    // boxの底面をvoxel_size間隔の内部のグリッドを作成する
-    // const double voxel_size = esdf_map->voxel_size();
+  geometry::BoundingBox3D refinePlacementPose(const geometry::BoundingBox3D& initial_placement_box,
+                                              const voxblox::EsdfMap::Ptr& esdf_map,
+                                              const geometry::BoundingBox3D& boundary_box) {
+    const Eigen::Vector3d boundary_min_far_point(-boundary_box.size.x() * 0.5, -boundary_box.size.y() * 0.5,
+                                                 initial_placement_box.center.z() + initial_placement_box.size.z());
 
-    // std::optional<geometry::BoundingBox3D> best_candidate = std::nullopt;
-    // for (const auto& point_candidate : placeable_candidates->points) {
-    //   std::cout << "Placeable candidate at: " << point_candidate.x << ", " << point_candidate.y << ", "
-    //             << point_candidate.z << ", distance: " << point_candidate.intensity << std::endl;
-    //   geometry::BoundingBox3D optimized_candidate = target_box;
-    //   optimized_candidate.center = Eigen::Vector3d(point_candidate.x, point_candidate.y, point_candidate.z);
+    std::vector<Eigen::Vector3d> local_box_bottom_points;
+    local_box_bottom_points.emplace_back(initial_placement_box.size.x() * 0.5, initial_placement_box.size.y() * 0.5,
+                                         -initial_placement_box.size.z() * 0.5);
+    local_box_bottom_points.emplace_back(-initial_placement_box.size.x() * 0.5, initial_placement_box.size.y() * 0.5,
+                                         -initial_placement_box.size.z() * 0.5);
+    local_box_bottom_points.emplace_back(initial_placement_box.size.x() * 0.5, -initial_placement_box.size.y() * 0.5,
+                                         -initial_placement_box.size.z() * 0.5);
+    local_box_bottom_points.emplace_back(-initial_placement_box.size.x() * 0.5, -initial_placement_box.size.y() * 0.5,
+                                         -initial_placement_box.size.z() * 0.5);
 
-    //   const Eigen::Isometry3d box_iso = optimized_candidate.getIsometry();
-    //   bool has_invalid_grid = false;
-    //   for (double dx = -optimized_candidate.size.x() * 0.5; dx < optimized_candidate.size.x() * 0.5; dx +=
-    //   voxel_size) {
-    //     for (double dy = -optimized_candidate.size.y() * 0.5; dy < optimized_candidate.size.y() * 0.5;
-    //          dy += voxel_size) {
-    //       const double dz = -optimized_candidate.size.z() * 0.5;
-    //       Eigen::Vector3d grid_local_point(dx, dy, dz);
-    //       // sdf座標系に変換する
-    //       Eigen::Vector3d grid_point_at_sdf = box_iso * grid_local_point;
-    //       // ESDFマップから距離と勾配を取得
-    //       double distance = 0.0;
-    //       Eigen::Vector3d gradient;
-    //       if (!esdf_map->getDistanceAndGradientAtPosition(grid_point_at_sdf, &distance, &gradient)) {
-    //         has_invalid_grid = true;
-    //         break;
-    //       }
+    const Eigen::Isometry3d box_iso = initial_placement_box.getIsometry();
+    std::vector<Eigen::Vector3d> sdf_box_bottom_points;
+    sdf_box_bottom_points.reserve(local_box_bottom_points.size());
+    for (const auto& local_point : local_box_bottom_points) {
+      sdf_box_bottom_points.push_back(box_iso * local_point);
+    }
 
-    //       // 距離が負の場合は衝突している
-    //       if (distance < half_voxel_size) {
-    //         has_invalid_grid = true;
-    //         break;
-    //       }
-    //     }
+    // sdf_box_bottom_pointsの中で，boundary_min_far_pointに最も近い点を探す
+    Eigen::Vector3d nearest_point = sdf_box_bottom_points.front();
+    double nearest_distance = (sdf_box_bottom_points.front() - boundary_min_far_point).norm();
+    for (const auto& pt : sdf_box_bottom_points) {
+      double distance = (pt - boundary_min_far_point).norm();
+      if (distance < nearest_distance) {
+        nearest_distance = distance;
+        nearest_point = pt;
+      }
+    }
 
-    //     if (has_invalid_grid) {
-    //       break;
-    //     }
-    //   }
-    //   if (has_invalid_grid) {
-    //     continue;
-    //   }
+    double distance = 0.0;
+    Eigen::Vector3d gradient;
+    if (!esdf_map->getDistanceAndGradientAtPosition(nearest_point, &distance, &gradient)) {
+    }
 
-    //   best_candidate = optimized_candidate;
-    // }
+    std::cout << "refinePlacementPose: nearest_distance = " << nearest_distance << ", esdf_distance = " << distance
+              << ", gradient = " << gradient.transpose() << std::endl;
 
-    // return best_candidate;
+    geometry::BoundingBox3D refined_box = initial_placement_box;
+    refined_box.center += gradient.normalized() * distance;
+    return refined_box;
   }
 };
 
