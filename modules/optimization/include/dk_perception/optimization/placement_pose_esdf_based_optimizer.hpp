@@ -77,28 +77,71 @@ class PlacementPoseEsdfBasedOptimizer {
       return std::nullopt;
     }
 
+    const auto half_voxel_size = esdf_map->voxel_size();
     // placeable_candidatesをz軸(降順)->y軸(昇順)->x軸(昇順)でソートする
     std::sort(placeable_candidates->points.begin(), placeable_candidates->points.end(),
-              [](const pcl::PointXYZI& a, const pcl::PointXYZI& b) {
-                if (std::fabs(a.z - b.z) > std::numeric_limits<double>::epsilon()) {
+              [half_voxel_size](const pcl::PointXYZI& a, const pcl::PointXYZI& b) {
+                if (std::fabs(a.z - b.z) > half_voxel_size) {
                   return a.z > b.z;
                 }
-                if (std::fabs(a.y - b.y) > std::numeric_limits<double>::epsilon()) {
+                if (std::fabs(a.y - b.y) > half_voxel_size) {
                   return a.y < b.y;
                 }
                 return a.x < b.x;
               });
-    const pcl::PointXYZI& best_point = placeable_candidates->points.front();
 
+    pcl::PointXYZI best_point = placeable_candidates->points.front();
     geometry::BoundingBox3D optimized_box = target_box;
     optimized_box.center = Eigen::Vector3d(best_point.x, best_point.y, best_point.z);
-    std::cout << "Optimized placement pose at: " << optimized_box.center.transpose()
-              << ", distance: " << best_point.intensity << std::endl;
-
-    // esdf_map->batchGetDistanceAndGradientAtPosition(EigenDRef<const Eigen::Matrix<double, 3, Eigen::Dynamic>>
-    // &positions, Eigen::Ref<Eigen::VectorXd> distances, EigenDRef<Eigen::Matrix<double, 3, Eigen::Dynamic>>
-    // &gradients, Eigen::Ref<Eigen::VectorXi> observed)
     return optimized_box;
+
+    // boxの底面をvoxel_size間隔の内部のグリッドを作成する
+    // const double voxel_size = esdf_map->voxel_size();
+
+    // std::optional<geometry::BoundingBox3D> best_candidate = std::nullopt;
+    // for (const auto& point_candidate : placeable_candidates->points) {
+    //   std::cout << "Placeable candidate at: " << point_candidate.x << ", " << point_candidate.y << ", "
+    //             << point_candidate.z << ", distance: " << point_candidate.intensity << std::endl;
+    //   geometry::BoundingBox3D optimized_candidate = target_box;
+    //   optimized_candidate.center = Eigen::Vector3d(point_candidate.x, point_candidate.y, point_candidate.z);
+
+    //   const Eigen::Isometry3d box_iso = optimized_candidate.getIsometry();
+    //   bool has_invalid_grid = false;
+    //   for (double dx = -optimized_candidate.size.x() * 0.5; dx < optimized_candidate.size.x() * 0.5; dx +=
+    //   voxel_size) {
+    //     for (double dy = -optimized_candidate.size.y() * 0.5; dy < optimized_candidate.size.y() * 0.5;
+    //          dy += voxel_size) {
+    //       const double dz = -optimized_candidate.size.z() * 0.5;
+    //       Eigen::Vector3d grid_local_point(dx, dy, dz);
+    //       // sdf座標系に変換する
+    //       Eigen::Vector3d grid_point_at_sdf = box_iso * grid_local_point;
+    //       // ESDFマップから距離と勾配を取得
+    //       double distance = 0.0;
+    //       Eigen::Vector3d gradient;
+    //       if (!esdf_map->getDistanceAndGradientAtPosition(grid_point_at_sdf, &distance, &gradient)) {
+    //         has_invalid_grid = true;
+    //         break;
+    //       }
+
+    //       // 距離が負の場合は衝突している
+    //       if (distance < half_voxel_size) {
+    //         has_invalid_grid = true;
+    //         break;
+    //       }
+    //     }
+
+    //     if (has_invalid_grid) {
+    //       break;
+    //     }
+    //   }
+    //   if (has_invalid_grid) {
+    //     continue;
+    //   }
+
+    //   best_candidate = optimized_candidate;
+    // }
+
+    // return best_candidate;
   }
 };
 
