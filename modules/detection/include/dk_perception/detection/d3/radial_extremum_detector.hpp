@@ -236,6 +236,15 @@ class RadialExtremumDetector {
       plane_y = -plane_y;
     }
 
+    // UnitXを平面に投影したときのベクトルとplane_xのなす角を計算し，90°を超えている場合はplane_xとplane_yの正負を入れ替える.
+    Eigen::Vector3f unit_x_proj = Eigen::Vector3f::UnitX() - plane_z * plane_z.dot(Eigen::Vector3f::UnitX());
+    unit_x_proj.normalize();
+    float angle = std::acos(plane_x.dot(unit_x_proj));
+    if (angle > M_PI / 4.0f) {
+      plane_x = -plane_x;
+      plane_y = -plane_y;
+    }
+
     // min_pointsの重心を計算する.
     Eigen::Vector3f centroid = pca.getMean().head(3);
 
