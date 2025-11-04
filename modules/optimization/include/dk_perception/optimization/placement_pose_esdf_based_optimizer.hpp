@@ -64,8 +64,9 @@ class PlacementPoseEsdfBasedOptimizer {
     return filtered_cloud;
   }
 
-  std::optional<geometry::BoundingBox3D> optimizePlacementPose(const geometry::BoundingBox3D& target_box,
-                                                               const voxblox::EsdfMap::Ptr& esdf_map) {
+  std::optional<geometry::BoundingBox3D> optimizePlacementPose(
+      const geometry::BoundingBox3D& target_box, const voxblox::EsdfMap::Ptr& esdf_map,
+      typename pcl::PointCloud<pcl::PointXYZI>::Ptr candidate_points = nullptr) {
     const double box_min_radius = 0.5 * std::min({target_box.size.x(), target_box.size.y(), target_box.size.z()});
     const double box_max_radius =
         0.5 * std::sqrt(target_box.size.x() * target_box.size.x() + target_box.size.y() * target_box.size.y() +
@@ -75,6 +76,10 @@ class PlacementPoseEsdfBasedOptimizer {
         computePlaceableCandidates(target_box, esdf_map, box_max_radius, box_max_radius + esdf_map->voxel_size());
     if (!placeable_candidates || placeable_candidates->empty()) {
       return std::nullopt;
+    }
+
+    if (candidate_points) {
+      *candidate_points = *placeable_candidates;
     }
 
     const auto half_voxel_size = esdf_map->voxel_size();
