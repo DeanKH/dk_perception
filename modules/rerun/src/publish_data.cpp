@@ -1,6 +1,10 @@
 #include "dk_perception/rerun/publish_data.hpp"
 
+#include <limits>
+#include <opencv2/opencv.hpp>
+
 #include "rerun.hpp"
+#include "rerun/archetypes/depth_image.hpp"
 #include "rerun/components/fill_mode.hpp"
 
 namespace rerun {
@@ -85,6 +89,41 @@ std::string publishData<pcl::PointXYZI>(const std::shared_ptr<rerun::RecordingSt
   auto point_cloud = rerun::Points3D(pts).with_colors(colors).with_radii({radius});
   rec->log(entity_path, point_cloud);
   return entity_path;
+}
+
+std::string publishColorImageData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
+                                  const cv::Mat& image) {
+  if (!rec) {
+    return entity;
+  }
+  assert(image.depth() == CV_8U);
+  assert(image.channels() == 3);
+
+  cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
+  std::vector<uint8_t> data(image.total() * image.channels());
+  std::memcpy(data.data(), image.data, image.total() * image.channels() * sizeof(uint8_t));
+
+  rec->log(entity,
+           rerun::Image::from_rgb24(data, {static_cast<uint32_t>(image.cols), static_cast<uint32_t>(image.rows)}));
+  return entity;
+}
+
+std::string publishDepthImageData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
+                                  const cv::Mat& image, const float depth_factor) {
+  if (!rec) {
+    return entity;
+  }
+  assert(image.depth() == CV_16U);
+  assert(image.channels() == 1);
+
+  std::vector<uint16_t> data(image.total(), std::numeric_limits<uint16_t>::max());
+  std::memcpy(data.data(), image.data, image.total() * sizeof(uint16_t));
+
+  rec->log(entity,
+           rerun::DepthImage(data.data(), {static_cast<uint32_t>(image.cols), static_cast<uint32_t>(image.rows)})
+               .with_meter(depth_factor)
+               .with_colormap(rerun::components::Colormap::Turbo));
+  return entity;
 }
 
 }  // namespace rerun

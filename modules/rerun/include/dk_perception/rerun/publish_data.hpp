@@ -15,6 +15,7 @@
 #include <cassert>
 #include <dk_perception/geometry.hpp>
 #include <memory>
+#include <opencv2/core.hpp>
 #include <rerun.hpp>
 #include <rerun/archetypes/boxes3d.hpp>
 #include <rerun/archetypes/line_strips3d.hpp>
@@ -26,6 +27,7 @@
 #include "rerun/archetypes/points3d.hpp"
 #include "rerun/archetypes/transform3d.hpp"
 #include "rerun/rotation3d.hpp"
+
 
 namespace rerun {
 std::string publishData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
@@ -104,4 +106,9 @@ std::string publishVoxelData(const std::shared_ptr<rerun::RecordingStream>& rec,
   rec->log(entity, voxel_boxes);
   return entity;
 }
+
+std::string publishColorImageData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
+                                  const cv::Mat& image);
+std::string publishDepthImageData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
+                                  const cv::Mat& image, const float depth_scale);
 }  // namespace rerun
