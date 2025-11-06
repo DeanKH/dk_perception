@@ -147,6 +147,62 @@ class PlacementPoseEsdfBasedOptimizer {
     refined_box.center += gradient.normalized() * distance;
     return refined_box;
   }
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr getBoxBottomGridPoints(const geometry::BoundingBox3D& target_box,
+                                                              const voxblox::EsdfMap::Ptr& esdf_map,
+                                                              Eigen::Vector3d& shift_dir) {
+    std::vector<Eigen::Vector3d> local_box_bottom_points;
+    const double voxel_size = esdf_map->voxel_size();
+    for (double dx = -target_box.size.x() * 0.5; dx < target_box.size.x() * 0.5; dx += voxel_size) {
+      for (double dy = -target_box.size.y() * 0.5; dy < target_box.size.y() * 0.5; dy += voxel_size) {
+        local_box_bottom_points.emplace_back(dx, dy, -target_box.size.z() * 0.5);
+      }
+    }
+    const Eigen::Isometry3d box_iso = target_box.getIsometry();
+    std::vector<Eigen::Vector3d> sdf_box_bottom_points;
+    sdf_box_bottom_points.reserve(local_box_bottom_points.size());
+    for (const auto& local_point : local_box_bottom_points) {
+      sdf_box_bottom_points.push_back(box_iso * local_point);
+    }
+
+    pcl::PointCloud<pcl::PointXYZI>::Ptr grid_points(new pcl::PointCloud<pcl::PointXYZI>());
+    grid_points->reserve(sdf_box_bottom_points.size());
+
+    size_t count = 0;
+    shift_dir = Eigen::Vector3d::Zero();
+    for (const auto& pt : sdf_box_bottom_points) {
+      double distance = -0.1;
+      Eigen::Vector3d gradient = Eigen::Vector3d::Zero();
+      if (esdf_map->getDistanceAndGradientAtPosition(pt, &distance, &gradient)) {
+        shift_dir += gradient.normalized() * distance;
+        count++;
+      }
+
+      pcl::PointXYZI pcl_point;
+      pcl_point.x = pt.x();
+      pcl_point.y = pt.y();
+      pcl_point.z = pt.z();
+      pcl_point.intensity = distance;  // Set a default intensity value
+      grid_points->push_back(pcl_point);
+    }
+
+    if (count > 0) {
+      shift_dir /= count;
+    }
+
+    return grid_points;
+  }
+
+  geometry::BoundingBox3D refinePlacementPoseByUniformlyXY(const geometry::BoundingBox3D& initial_placement_box,
+                                                           const voxblox::EsdfMap::Ptr& esdf_map,
+                                                           const geometry::BoundingBox3D& boundary_box) {
+    Eigen::Vector3d shift_dir;
+    auto points = getBoxBottomGridPoints(initial_placement_box, esdf_map, shift_dir);
+    geometry::BoundingBox3D refined_box = initial_placement_box;
+    shift_dir.z() = 0.0;
+    refined_box.center += shift_dir;
+    return refined_box;
+  }
 };
 
 }  // namespace dklib::perception::optimization
