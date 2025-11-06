@@ -33,7 +33,7 @@ BoxInteriorReconstructor::BoxInteriorReconstructor(const geometry::BoundingBox3D
   integrator_config.voxel_carving_enabled = true;
   integrator_config.default_truncation_distance = config.tsdf_voxel_size * 4.0f;
 
-  integrator_ = voxblox::TsdfIntegratorFactory::create(voxblox::TsdfIntegratorType::kFast, integrator_config,
+  integrator_ = voxblox::TsdfIntegratorFactory::create(voxblox::TsdfIntegratorType::kMerged, integrator_config,
                                                        tsdf_map_->getTsdfLayerPtr());
 
   voxblox::EsdfMap::Config esdf_config;
