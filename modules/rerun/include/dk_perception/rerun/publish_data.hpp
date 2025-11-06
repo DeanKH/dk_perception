@@ -92,11 +92,11 @@ std::string publishVoxelData(const std::shared_ptr<rerun::RecordingStream>& rec,
 
   for (const auto& p : cloud->points) {
     if (p.intensity < 0) {
-      colors.emplace_back(0, 0, 255, 255);
+      colors.emplace_back(0, 0, 255, 10);
     } else {
       double diff = intensity_max - p.intensity;
       auto c = voxblox::rainbowColorMap(diff / intensity_max);
-      colors.emplace_back(c.r, c.g, c.b, 100);
+      colors.emplace_back(c.r, c.g, c.b, static_cast<uint8_t>(transparency * 255));
     }
   }
 
@@ -111,4 +111,23 @@ std::string publishColorImageData(const std::shared_ptr<rerun::RecordingStream>&
                                   const cv::Mat& image);
 std::string publishDepthImageData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                                   const cv::Mat& image, const float depth_scale);
+
+std::string publishArrowData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
+                             const Eigen::Vector3d& origin, const Eigen::Vector3d& direction) {
+  if (!rec) {
+    return "";
+  }
+
+  std::vector<rerun::Vec3D> origins;
+  origins.emplace_back(origin.x(), origin.y(), origin.z());
+  std::vector<rerun::Vec3D> vectors;
+  vectors.emplace_back(direction.x(), direction.y(), direction.z());
+
+  rec->log(entity, rerun::Arrows3D::from_vectors(vectors)
+                       .with_origins(origins)
+                       .with_colors({rerun::Rgba32{255, 0, 0, 255}})
+                       .with_radii({0.01f}));
+  return entity;
+}
+
 }  // namespace rerun
