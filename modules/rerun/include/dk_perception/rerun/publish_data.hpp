@@ -28,7 +28,6 @@
 #include "rerun/archetypes/transform3d.hpp"
 #include "rerun/rotation3d.hpp"
 
-
 namespace rerun {
 std::string publishData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                         const Eigen::Isometry3d& transform);
@@ -67,7 +66,8 @@ std::string publishData<pcl::PointXYZI>(const std::shared_ptr<rerun::RecordingSt
 
 template <typename PointT>
 std::string publishVoxelData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
-                             typename pcl::PointCloud<PointT>::Ptr& cloud, const float voxel_size) {
+                             typename pcl::PointCloud<PointT>::Ptr& cloud, const float voxel_size,
+                             float transparency = 0.1f) {
   if (!rec) {
     return entity;
   }
