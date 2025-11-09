@@ -95,8 +95,8 @@ class PlacementPoseEsdfBasedOptimizer {
                 return a.x < b.x;
               });
 
-    pcl::PointXYZI best_point = placeable_candidates->points.front();
     geometry::BoundingBox3D optimized_box = target_box;
+    pcl::PointXYZI best_point = placeable_candidates->points.front();
     optimized_box.center = Eigen::Vector3d(best_point.x, best_point.y, best_point.z);
     return optimized_box;
   }
