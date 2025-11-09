@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 // #include <gtsam_app/geoms.hpp>
+#include <pcl/PolygonMesh.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <voxblox/core/color.h>
@@ -130,4 +131,6 @@ std::string publishArrowData(const std::shared_ptr<rerun::RecordingStream>& rec,
   return entity;
 }
 
+std::string publishMeshData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
+                            pcl::PointCloud<pcl::PointXYZRGB>::Ptr& points, const std::vector<pcl::Vertices>& polygons);
 }  // namespace rerun

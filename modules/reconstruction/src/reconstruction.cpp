@@ -1,8 +1,13 @@
+#include <pcl/PolygonMesh.h>
 #include <pcl/common/transforms.h>
+#include <pcl/conversions.h>
+#include <voxblox/core/color.h>
 #include <voxblox/core/common.h>
 #include <voxblox/core/tsdf_map.h>
 #include <voxblox/core/voxel.h>
 #include <voxblox/integrator/tsdf_integrator.h>
+#include <voxblox/mesh/mesh_integrator.h>
+#include <voxblox/mesh/mesh_layer.h>
 
 #include <dk_perception/reconstruction/reconstruction.hpp>
 
@@ -15,6 +20,86 @@ double measureTime(FuncT&& func) {
   double mill_count = std::chrono::duration<double, std::milli>(end - start).count();
   std::cout << "Time taken: " << mill_count << " ms" << std::endl;
   return mill_count;
+}
+
+void setVertexColor(pcl::PointXYZRGB& pcl_point, const voxblox::Mesh::ConstPtr& mesh, size_t vertex_index,
+                    int color_mode) {
+  if (color_mode == 1) {
+    pcl_point.r = mesh->colors[vertex_index].r;
+    pcl_point.g = mesh->colors[vertex_index].g;
+    pcl_point.b = mesh->colors[vertex_index].b;
+  } else {
+    constexpr float min_z = 0.0;
+    constexpr float max_z = 3.0;
+    const float z = mesh->vertices[vertex_index].z();
+    const float d = std::clamp(z, min_z, max_z);
+    const float h = (d - min_z) / (max_z - min_z);
+    auto c = voxblox::rainbowColorMap(h);
+    pcl_point.r = c.r;
+    pcl_point.g = c.g;
+    pcl_point.b = c.b;
+  }
+}
+
+std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, std::vector<pcl::Vertices>> generateMesh(
+    const voxblox::MeshLayer::Ptr& mesh_layer, int color_mode = 1) {
+  assert(mesh_layer);
+
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+  std::vector<pcl::Vertices> polygons;
+
+  voxblox::BlockIndexList mesh_indices;
+  mesh_layer->getAllAllocatedMeshes(&mesh_indices);
+
+  size_t vertex_index = 0;
+
+  for (const voxblox::BlockIndex& block_index : mesh_indices) {
+    voxblox::Mesh::ConstPtr mesh = mesh_layer->getMeshPtrByIndex(block_index);
+
+    if (!mesh->hasVertices()) {
+      continue;
+    }
+
+    // 頂点をpoint cloudに追加
+    for (size_t i = 0; i < mesh->vertices.size(); i++) {
+      pcl::PointXYZRGB point;
+      point.x = mesh->vertices[i].x();
+      point.y = mesh->vertices[i].y();
+      point.z = mesh->vertices[i].z();
+
+      // 色情報があれば設定
+      if (mesh->hasColors()) {
+        const voxblox::Color& color = mesh->colors[i];
+        point.r = color.r;
+        point.g = color.g;
+        point.b = color.b;
+      } else {
+        point.r = point.g = point.b = 127;  // デフォルトグレー
+      }
+
+      cloud->push_back(point);
+    }
+
+    // 三角形を構成（マーチングキューブスの出力は三角形の頂点順）
+    for (size_t i = 0; i < mesh->indices.size(); i += 3) {
+      if (i + 2 < mesh->indices.size()) {
+        pcl::Vertices triangle;
+        triangle.vertices.resize(3);
+        triangle.vertices[0] = vertex_index + mesh->indices[i];
+        triangle.vertices[1] = vertex_index + mesh->indices[i + 1];
+        triangle.vertices[2] = vertex_index + mesh->indices[i + 2];
+        polygons.push_back(triangle);
+      }
+    }
+
+    vertex_index += mesh->vertices.size();
+  }
+
+  // pcl::PolygonMesh に設定
+  // pcl::toPCLPointCloud2(cloud, polygon_mesh->cloud);
+  // polygon_mesh->polygons = polygons;
+
+  return {cloud, polygons};
 }
 
 }  // namespace
@@ -47,6 +132,11 @@ BoxInteriorReconstructor::BoxInteriorReconstructor(const geometry::BoundingBox3D
 
   esdf_integrator_.reset(
       new voxblox::EsdfIntegrator(esdf_integrator_config, tsdf_map_->getTsdfLayerPtr(), esdf_map_->getEsdfLayerPtr()));
+
+  auto mesh_integrator_config = voxblox::MeshIntegratorConfig();
+  mesh_layer_ = std::make_shared<voxblox::MeshLayer>(tsdf_map_->block_size());
+  mesh_integrator_ = std::make_shared<voxblox::MeshIntegrator<voxblox::TsdfVoxel>>(
+      mesh_integrator_config, tsdf_map_->getTsdfLayerPtr(), mesh_layer_.get());
 }
 
 template <>
@@ -93,6 +183,8 @@ void BoxInteriorReconstructor::update(const pcl::PointCloud<pcl::PointXYZRGB>& c
     esdf_integrator_->updateFromTsdfLayerBatch();
     std::cout << "esdf update done" << std::endl;
   });
+
+  mesh_integrator_->generateMesh(false, false);
 }
 
 /**
@@ -154,4 +246,9 @@ void BoxInteriorReconstructor::cropTsdfVolumeOutsideBox() {
     }
   }
 }
+
+std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, std::vector<pcl::Vertices>> BoxInteriorReconstructor::generateMesh() {
+  return ::generateMesh(mesh_layer_);
+}
+
 }  // namespace dklib::perception::reconstruction

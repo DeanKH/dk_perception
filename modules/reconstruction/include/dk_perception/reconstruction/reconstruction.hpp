@@ -1,4 +1,5 @@
 #pragma once
+#include <pcl/PolygonMesh.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <voxblox/core/common.h>
@@ -7,6 +8,7 @@
 #include <voxblox/core/tsdf_map.h>
 #include <voxblox/integrator/esdf_integrator.h>
 #include <voxblox/integrator/tsdf_integrator.h>
+#include <voxblox/mesh/mesh_integrator.h>
 
 #include <dk_perception/geometry/bounding_box_3d.hpp>
 #include <dk_perception/reconstruction/voxblox_pcl_conversion.hpp>
@@ -96,6 +98,8 @@ class BoxInteriorReconstructor {
 
   const voxblox::EsdfMap::Ptr& getEsdfMap() const { return esdf_map_; }
 
+  std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, std::vector<pcl::Vertices>> generateMesh();
+
  private:
   geometry::BoundingBox3D box_;
   float voxel_size_ = 0.02f;
@@ -106,5 +110,8 @@ class BoxInteriorReconstructor {
   std::shared_ptr<voxblox::EsdfMap> esdf_map_;
   std::unique_ptr<voxblox::EsdfIntegrator> esdf_integrator_;
   float box_max_half_size_;
+
+  std::shared_ptr<voxblox::MeshLayer> mesh_layer_;
+  std::shared_ptr<voxblox::MeshIntegrator<voxblox::TsdfVoxel>> mesh_integrator_;
 };
 }  // namespace dklib::perception::reconstruction
