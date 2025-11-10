@@ -16,6 +16,9 @@ struct BoundingBox3D {
 
   Eigen::Matrix4d getTransformation() const;
   Eigen::Isometry3d getIsometry() const;
+  void setTransformation(const Eigen::Matrix4d& transform);
+  void setIsometry(const Eigen::Isometry3d& isometry);
+
   static BoundingBox3D from_center_size(const Eigen::Vector3d& center, const Eigen::Vector3d& size,
                                         const Eigen::Quaterniond& orientation = Eigen::Quaterniond::Identity());
 };

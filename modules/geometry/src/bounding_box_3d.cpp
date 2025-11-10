@@ -21,6 +21,17 @@ Eigen::Isometry3d BoundingBox3D::getIsometry() const {
   return isometry;
 }
 
+void BoundingBox3D::setTransformation(const Eigen::Matrix4d& transform) {
+  center = transform.block<3, 1>(0, 3).cast<double>();
+  Eigen::Matrix3d rotation_matrix = transform.block<3, 3>(0, 0).cast<double>();
+  orientation = Eigen::Quaterniond(rotation_matrix);
+}
+
+void BoundingBox3D::setIsometry(const Eigen::Isometry3d& isometry) {
+  center = isometry.translation().cast<double>();
+  orientation = Eigen::Quaterniond(isometry.rotation()).normalized();
+}
+
 BoundingBox3D BoundingBox3D::from_center_size(const Eigen::Vector3d& center, const Eigen::Vector3d& size,
                                               const Eigen::Quaterniond& orientation) {
   return BoundingBox3D(center, size, orientation);
