@@ -102,12 +102,13 @@ std::string publishColorImageData(const std::shared_ptr<rerun::RecordingStream>&
   assert(image.depth() == CV_8U);
   assert(image.channels() == 3);
 
-  cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
-  std::vector<uint8_t> data(image.total() * image.channels());
-  std::memcpy(data.data(), image.data, image.total() * image.channels() * sizeof(uint8_t));
+  cv::Mat image_rgb;
+  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+  std::vector<uint8_t> data(image_rgb.total() * image_rgb.channels());
+  std::memcpy(data.data(), image_rgb.data, image_rgb.total() * image_rgb.channels() * sizeof(uint8_t));
 
-  rec->log(entity,
-           rerun::Image::from_rgb24(data, {static_cast<uint32_t>(image.cols), static_cast<uint32_t>(image.rows)}));
+  rec->log(entity, rerun::Image::from_rgb24(
+                       data, {static_cast<uint32_t>(image_rgb.cols), static_cast<uint32_t>(image_rgb.rows)}));
   return entity;
 }
 
