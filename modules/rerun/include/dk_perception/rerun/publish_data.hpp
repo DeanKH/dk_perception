@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 // #include <gtsam_app/geoms.hpp>
+#include <Eigen/src/Geometry/Transform.h>
 #include <pcl/PolygonMesh.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -25,8 +26,10 @@
 #include <vector>
 
 #include "rerun/archetypes/boxes3d.hpp"
+#include "rerun/archetypes/pinhole.hpp"
 #include "rerun/archetypes/points3d.hpp"
 #include "rerun/archetypes/transform3d.hpp"
+#include "rerun/components/view_coordinates.hpp"
 #include "rerun/rotation3d.hpp"
 
 namespace rerun {
@@ -133,4 +136,29 @@ std::string publishArrowData(const std::shared_ptr<rerun::RecordingStream>& rec,
 
 std::string publishMeshData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
                             pcl::PointCloud<pcl::PointXYZRGB>::Ptr& points, const std::vector<pcl::Vertices>& polygons);
+
+std::string publishPinholeCameraData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
+                                     const float focal_length, const cv::Size& resolution) {
+  if (!rec) {
+    return entity;
+  }
+
+  rec->log(entity, rerun::Pinhole::from_focal_length_and_resolution(
+                       focal_length, {static_cast<float>(resolution.width), static_cast<float>(resolution.height)})
+                       .with_camera_xyz(rerun::components::ViewCoordinates::RDF));
+  return entity;
+}
+
+std::string publishPinholeCameraData(const std::shared_ptr<rerun::RecordingStream>& rec, const std::string& entity,
+                                     const float focal_length, const cv::Size& resolution,
+                                     const Eigen::Isometry3d& camera_pose) {
+  if (!rec) {
+    return entity;
+  }
+
+  publishData(rec, entity, camera_pose);
+  publishPinholeCameraData(rec, entity + "/camera", focal_length, resolution);
+  return entity;
+}
+
 }  // namespace rerun
